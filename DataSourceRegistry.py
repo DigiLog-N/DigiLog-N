@@ -16,6 +16,13 @@ class DataSourceRegistry:
             results.append(ds)
         return results
 
+    def get_data_source(self, name):
+        for item in self.get_data_sources():
+            if item.get_name() == name:
+                return item
+
+        return None
+
     def add_data_source(self, data_source):
         new_data_source = data_source.d
 

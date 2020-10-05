@@ -15,6 +15,8 @@ class DataSource:
             self.d['description'] = None
             self.d['provider'] = None
 
+    # TODO: Setters and getters are not very pythonic, but perhaps for now,
+    #  it's suitable to use them to give the form definition.
     def set_path_to_plasma_file(self, path_to_plasma_file):
         self.d['path_to_plasma_file'] = path_to_plasma_file
 
@@ -23,6 +25,18 @@ class DataSource:
 
     def set_provider(self, provider):
         self.d['provider'] = provider
+
+    def get_name(self):
+        return self.d['name']
+
+    def get_path_to_plasma_file(self):
+        return self.d['path_to_plasma_file']
+
+    def get_description(self):
+        return self.d['description']
+
+    def get_provider(self):
+        return self.d['provider']
 
     def add_field(self, name, units, precision, description, data_type):
         if name in self.d['fields']:

@@ -8,19 +8,25 @@ import pymongo
 import sys
 from DataSource import DataSource
 from DataSourceRegistry import DataSourceRegistry
+import pandas as pd
 
 
 class PlasmaReader:
     def __init__(self, file_path):
         self.client = plasma.connect(file_path)
-        # self._get_keys()
-        self.d = {}
         self.keys_read = []
 
-    def get_keys(self):
-        # generates a list of keys to objects currently in the Plasma store.
-        # this method is called at construction, and the list of keys can
-        # be refreshed any time this method is called by the user.
+    def _get_keys(self):
+        # Generates a list of keys to objects currently in the Plasma store.
+        # PlasmaReader object keeps a list of keys read. 
+        # Read the data associated with each key once and only once.
+        # Once the value of a key has been 'sealed', it becomes read-only and
+        # Available to clients. Hence, we can discover new rows by obtaining
+        # the list of all keys and taking the set difference with the list of
+        # keys already read.,
+        #
+        # At some point, we need an option to delete keys that we have read.
+        # assuming no other client needs to read them.
         l = list(self.client.list().keys())
 
         # currently the only way I know to remove the ObjectID description
@@ -39,8 +45,6 @@ class PlasmaReader:
 
         # Read data from the Plasma object
         # Each Plasma object written out from CT2Arrow only contains 1 record batch
-        # Examine the data from this record batch
-        # (see https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow.RecordBatch)
         #
         # buffers are created in a two-step process that first sees memory allocated and the buffer gets
         #  populated with data. The second step is when the object is 'sealed', making it read-only and
@@ -51,37 +55,39 @@ class PlasmaReader:
         # For this version, we will call get_buffers(id) w/out a timeout; it will block until the buffer
         #  is sealed. It keeps things simple; we've either read it, or we haven't.
         [data] = self.client.get_buffers([id])
-        reader = pa.RecordBatchStreamReader(pa.BufferReader(data))
 
+        # Fetch the Plasma object and convert object back into an Arrow RecordBatch
+        reader = pa.RecordBatchStreamReader(pa.BufferReader(data))
+        # Remember, only one batch per object.
         batch = reader.read_next_batch()
         #print('number of columns = %d' %(batch.num_columns))
         #print('number of rows = %d' % (batch.num_rows))
         #print('schema:')
-        # generate Cassandra schema from the metadata output from this method.
-        print(batch.schema)
         header = batch.schema.names
 
-        for i in range(0, batch.num_columns):
-            column = header[i]
-            if not column in self.d:
-                self.d[header[i]] = []
-
-            self.d[header[i]] += batch.column(i).to_pylist()
-
-        # note that 60 rows of data for Engine Unit 38 is in PHM08********_b00102,
-        # while the final 29 is in PHM08********_b00103. Each Object contains
-        # data for only one Engine Unit (Confirmed). Hence, final confirmation
-        # requires iterating through all Objects.
         self.keys_read.append(key)
 
-    def read_all_columns(self):
+        return batch
+
+    def to_pandas(self):
         # any key successfully read by _read_from_key() will append the
         # key to self.keys_read. This set difference operation will ensure
         # only keys that haven't already been processed successfully will be
         # read.
-        latest_keys = list(set(self.get_keys()) - set(self.keys_read))
+        latest_keys = list(set(self._get_keys()) - set(self.keys_read))
+
+        record_batches = []
 
         for key in latest_keys:
-            self._read_from_key(key)
+            record_batches.append(self._read_from_key(key))
 
-        return self.d
+        if record_batches:
+            consolidated_table = pa.Table.from_batches(record_batches)
+            return consolidated_table.to_pandas()
+
+        return None
+
+
+
+
+

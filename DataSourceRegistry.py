@@ -26,12 +26,10 @@ class DataSourceRegistry:
     def add_data_source(self, data_source):
         new_data_source = data_source.d
 
-        # I want to keep '_id' values for objects standard.
-        # However, I still want data-sources to be unique by name.
-        # Hence, we check to see if a data-source with a matching name already exists.
-        #
-        # For now, let's not support upsert() behavior. We don't want users accidently
-        # overwriting entries.
+        # keep standard md5 hahes for _id values.
+        # however, ensure that data-sources are unique by name.
+        # do not add upsert support. Users shouldn't accidently and
+        # unknowingly mess up an entry.
         for doc in self.collection.find():
             if doc['name'] == new_data_source['name']:
                 raise ValueError("A data-source named '%s' already exists. Use update_data_source()." % new_data_source['name'])

@@ -1,2 +1,7 @@
-pymongo
+cassandra-driver
+pandas
 pyarrow
+pymongo
+pyspark
+requests
+pytz

@@ -50,6 +50,10 @@ def write_test(pandas_data_frame):
     spark.conf.set("spark.hadoop.parquet.enable.summary-metadata", "false")
 
     '''
+    # this code is from a previous write test that doesn't use Plasma data,
+    # but tests the performance of setting pyspark.enabled to true.
+
+
     # Declare the function and create the UDF
     def multiply_func(a, b):
         return a * b
@@ -79,20 +83,8 @@ if __name__ == '__main__':
     data_source = dsr.get_data_source('PHM08 Prognostics Data Challenge Dataset')
 
     if data_source:
-        # Readers specific to a particular data-source could be sub-classed from
-        # PlasmaReader. Currently, this PlasmaReader rips all columns and stores
-        # them as lists in an internal dictionary. You can access all of 'op3'
-        # for instance by simply using as below. At some time interval, you can
-        # read_all_columns() again, and PlasmaReader will determine which buffers
-        # are new, extract their data, mark the buffer names off in its internal
-        # list, and append the data to the existing data structure.
-        #
-        # the user may not want to preserve their own copy of the data in the
-        # data structure, hence one could simply delete self.d and reinitialize
-        # it to {}, etc. There's a number of possibilities, depending on
-        # the usage patterns needed for generating models in pyspark.
-        #
-        # I also have some code for loading this data into a DataFrame, but I
-        # think this might be heavyweight for our use-case.
         l = read_test(data_source.get_path_to_plasma_file())
+        # this is kind of a hack to reuse the data from read test for the write test.
+        # since the second read test yielded no data, let's use the dataframe from the
+        # first test in read_test:
         write_test(l[0])

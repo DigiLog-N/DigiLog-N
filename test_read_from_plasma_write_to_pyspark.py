@@ -10,12 +10,12 @@ from DataSourceRegistry import DataSourceRegistry
 from PlasmaReader import PlasmaReader
 
 
-def read_test(plasma_file_path):
+def read_test(plasma_file_path, key_prefix):
     # Use our PlasmaReader object to read all the data currently in Plasma and
     # convert it into a Pandas DataFrame.
     pdf_list = []
 
-    pr = PlasmaReader(plasma_file_path)
+    pr = PlasmaReader(plasma_file_path, key_prefix)
     pdf = pr.to_pandas()
     print(pdf.info())
     print(pdf.shape)
@@ -83,7 +83,10 @@ if __name__ == '__main__':
     data_source = dsr.get_data_source('PHM08 Prognostics Data Challenge Dataset')
 
     if data_source:
-        l = read_test(data_source.get_path_to_plasma_file())
+        # TODO: All Plasma keys for this data-source begin with 'PHM08'. For
+        # now, hard-code 'PHM08*' as the prefix to filter with. In time we
+        # will pull this information from the Registry as well.
+        l = read_test(data_source.get_path_to_plasma_file(), 'PHM08*')
         # this is kind of a hack to reuse the data from read test for the write test.
         # since the second read test yielded no data, let's use the dataframe from the
         # first test in read_test:

@@ -12,9 +12,10 @@ import pandas as pd
 
 
 class PlasmaReader:
-    def __init__(self, file_path):
+    def __init__(self, file_path, key_prefix):
         self.client = plasma.connect(file_path)
         self.keys_read = []
+        self.key_prefix = key_prefix
 
     def _get_keys(self):
         # Generates a list of keys to objects currently in the Plasma store.
@@ -36,6 +37,8 @@ class PlasmaReader:
         # the idata_source in l are encoded in hex, and thus not human-readable. This
         # will allow us to get a human-browsable list.
         l = [bytearray.fromhex(str(x)).decode() for x in l]
+
+        l = [x for x in l if x.startswith(self.key_prefix)]
 
         return l
 

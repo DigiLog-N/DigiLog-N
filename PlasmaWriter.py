@@ -5,38 +5,8 @@ import pyarrow.plasma as plasma
 import numpy as np
 from random import choice
 from string import digits
-from GMailUser import GMailUser
 from json import dumps
 from time import time
-
-
-def email_main(user, password, subject, message, addressed_to):
-    try:
-        email_alert = GMailUser(user, password, verify_parameters=False)
-        email_alert.send(subject, message, addressed_to, hangup=True)
-    except SMTPHeloError as e:
-        raise ValueError("I said HELO, but the server ignored me: %s" % str(e))
-    except SMTPAuthenticationError as e:
-        raise ValueError("The SMTP server did not accept your username and/or password: %s" % str(e))
-    except SMTPNotSupportedError as e:
-        raise ValueError("The AUTH and/or SMTPUTF8 command is not supported by this server: %s" % str(e))
-    except SMTPException as e:
-        raise ValueError("A suitable authentication method couldn't be found: %s" % str(e))
-    except gaierror as e:
-        raise ValueError("Invalid SMTP host name: %s" % str(e))
-    except RuntimeError as e:
-        raise EnvironmentError("TLS and/or SSL support is not available to your Python interpreter: %s" % str(e))
-    except SMTPRecipientsRefused as e:
-        raise ValueError("All recipients were refused. Please verify your list of recipients is correct.")
-    except SMTPSenderRefused as e:
-        raise ValueError("Sender refused From=%s: %s" % (user, str(e)))
-    except SMTPDataError as e:
-        # TODO: This should probably be a different kind of error.
-        #  consider wrapping all errors in a digilog-N specific error type.
-        #  catching all of these errors here and re-raising them as a merged set of types is mainly
-        #  to prevent downstream code from having to know/handle all of these very specific errors.
-        #  Yet, we want to be fairly robust; we need to know if a user did not receive an email.
-        raise ValueError("Server replied w/unexpected error code: %s" % str(e))
 
 
 class PlasmaWriter:
@@ -75,15 +45,6 @@ class PlasmaWriter:
         object_ids = [plasma.ObjectID(bytes(x, 'ascii')) for x in list_of_keys]
         self.client.delete(object_ids)
 
-    def read(self, id_string):
-        object_id = plasma.ObjectID(bytes(id_string, 'ascii'))
-        [data] = self.client.get_buffers([object_id], timeout_ms=0)
-        if data:
-            buffer = BufferReader(data)
-            # Convert object back into an Arrow RecordBatch
-            reader = RecordBatchStreamReader(buffer)
-            table = reader.read_all()
-            return table
 
 class NotifyWriter(PlasmaWriter):
     def __init__(self, file_path):
@@ -116,24 +77,4 @@ if __name__ == '__main__':
     recipients.append('charlie@canvasslabs.com')
     recipients.append('unique.identifier@gmail.com')
 
-    id_string = notify_writer.write(recipients, 'This is a new test', 'Test10')
-
-    table = notify_writer.read(id_string)
-
-    def get_row(t, row_number):
-        d = {}
-        for column in t.schema.names:
-            d[column] = str(t.column(column)[row_number])
-        return d
-
-    if table:
-        password = "D9AZm244L3UbYwBf"
-        user = "cowartcharles1@gmail.com"
-        for i in range(0, table.num_rows):        
-            d = get_row(table, 0)
-
-            print(d)
-
-            #d['recipients'] = d['recipients'].split(',')
-
-            #email_main(user, password, d['subject'], d['message'], d['recipients'])
+    id_string = notify_writer.write(recipients, 'This is a new test', 'Test11')

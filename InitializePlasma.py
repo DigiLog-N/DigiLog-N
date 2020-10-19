@@ -12,6 +12,9 @@ class PlasmaBroker:
     to manage creation of Plasma objects and CT2Arrow either assumes that the
     file already exists in the agreed location, or tests for the existence of
     the file.
+
+    Although we are using just a single Plasma object for our demo, it may
+    still be useful to have it managed at some point using this Broker.
     '''
     def __init__(self, root_path, group_name):
         # store all plasmas in an organized location.

@@ -7,6 +7,7 @@ from random import choice
 from string import digits
 from GMailUser import GMailUser
 from json import dumps
+from time import time
 
 
 def email_main(user, password, subject, message, addressed_to):
@@ -70,6 +71,10 @@ class PlasmaWriter:
 
         return id_string
 
+    def delete(self, list_of_keys):
+        object_ids = [plasma.ObjectID(bytes(x, 'ascii')) for x in list_of_keys]
+        self.client.delete(object_ids)
+
     def read(self, id_string):
         object_id = plasma.ObjectID(bytes(id_string, 'ascii'))
         [data] = self.client.get_buffers([object_id], timeout_ms=0)
@@ -89,14 +94,16 @@ class NotifyWriter(PlasmaWriter):
         # and because the number of elements in each array need to be the
         # same, we will need to turn the list of n recipients into a comma-
         # separated string, before wrapping it again as a list of one.
+        epoch_timestamp = time()
         recipients = ','.join(recipients)
         my_data = [
+            pa_array([epoch_timestamp]),
             pa_array([recipients]),
             pa_array([message]),
             pa_array([subject])
         ]
 
-        rb = record_batch(my_data, names=['recipients', 'message', 'subject'])
+        rb = record_batch(my_data, names=['epoch_timestamp', 'recipients', 'message', 'subject'])
         id_string = self._write(rb)
 
         return id_string
@@ -109,7 +116,7 @@ if __name__ == '__main__':
     recipients.append('charlie@canvasslabs.com')
     recipients.append('unique.identifier@gmail.com')
 
-    id_string = notify_writer.write(recipients, 'This is a new test', 'Test5')
+    id_string = notify_writer.write(recipients, 'This is a new test', 'Test10')
 
     table = notify_writer.read(id_string)
 
@@ -120,10 +127,13 @@ if __name__ == '__main__':
         return d
 
     if table:
-        d = get_row(table, 0)
         password = "D9AZm244L3UbYwBf"
         user = "cowartcharles1@gmail.com"
+        for i in range(0, table.num_rows):        
+            d = get_row(table, 0)
 
-        d['recipients'] = d['recipients'].split(',')
+            print(d)
 
-        email_main(user, password, d['subject'], d['message'], d['recipients'])
+            #d['recipients'] = d['recipients'].split(',')
+
+            #email_main(user, password, d['subject'], d['message'], d['recipients'])

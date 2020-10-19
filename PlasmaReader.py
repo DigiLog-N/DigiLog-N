@@ -12,10 +12,11 @@ import pandas as pd
 
 
 class PlasmaReader:
-    def __init__(self, file_path, key_prefix):
+    def __init__(self, file_path, key_prefix, remove_after_reading=False):
         self.client = plasma.connect(file_path)
         self.keys_read = []
         self.key_prefix = key_prefix
+        self.auto_remove = remove_after_reading 
 
     def _get_keys(self):
         # Generates a list of keys to objects currently in the Plasma store.
@@ -68,7 +69,10 @@ class PlasmaReader:
         #print('schema:')
         header = batch.schema.names
 
-        self.keys_read.append(key)
+        if self.auto_remove:
+            self.client.delete([id])
+        else:
+            self.keys_read.append(key)
 
         return batch
 
@@ -89,8 +93,3 @@ class PlasmaReader:
             return consolidated_table.to_pandas()
 
         return None
-
-
-
-
-

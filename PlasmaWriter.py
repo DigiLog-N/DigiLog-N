@@ -1,4 +1,4 @@
-from pyarrow import MockOutputStream, RecordBatchStreamWriter, FixedSizeBufferWriter
+from pyarrow import RecordBatch, MockOutputStream, RecordBatchStreamWriter, FixedSizeBufferWriter
 import pyarrow.plasma as plasma
 from random import choice
 from string import digits
@@ -39,3 +39,8 @@ class PlasmaWriter:
     def delete(self, list_of_keys):
         object_ids = [plasma.ObjectID(bytes(x, 'ascii')) for x in list_of_keys]
         self.client.delete(object_ids)
+
+    def from_pandas(self, pdf):
+        record_batch = RecordBatch.from_pandas(pdf)
+
+        return self._write(record_batch)

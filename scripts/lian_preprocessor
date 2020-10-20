@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+from lian_preprocessor.LiAnPreProcessor import main
+import logging
+from lian_preprocessor.FileUtil import FileUtil, WorkingDirectory
+from multiprocessing import cpu_count
+from os import environ, path, makedirs, getcwd
+from argparse import ArgumentParser
+
+
+if __name__ == '__main__':
+    logging_levels = {  'DEBUG': logging.DEBUG,
+                        'WARNING': logging.WARNING,
+                        'INFO': logging.INFO,
+                        'ERROR': logging.ERROR,
+                        'CRITICAL': logging.CRITICAL}
+
+    try:
+        if 'LIAN_LOGGING_LEVEL' in environ:
+            if environ['LIAN_LOGGING_LEVEL'] in logging_levels:
+                logging_level = logging_levels[environ['LIAN_LOGGING_LEVEL']]
+                print("Logging level set to %s" % environ['LIAN_LOGGING_LEVEL'])
+            else:
+                raise ValueError("'%s' is not a valid logging level." % environ['LIAN_LOGGING_LEVEL'])
+        else:
+            logging_level = logging_levels['WARNING']
+            print("Logging level set to WARNING")
+
+        # Arguments defined on the command-line will override those defined through environment variables.
+        # If cpu-count remains undefined in both, it will use the maximum number of CPU cores available on
+        #  the system by default.
+        # If input-directory remains undefined in both, or is an invalid filepath, an error will be returned.
+        # If output-directory remains undefined in both, an error will be returned.
+        # If output-directory does not exist, an effort will be made to create it; if that fails, it will return
+        #  an error.
+
+        parser = ArgumentParser()
+        parser.add_argument("-c", "--cpu-count", help="Number of cpu cores to allocate.", type=int)
+        parser.add_argument("-i", "--input-directory", help="The path to the source code tree to scan.")
+        parser.add_argument("-o", "--output-directory", help="The path to store the final output.")
+        parser.add_argument("-l", "--log-directory", help="The path to write LiAnPreProcessor.log.")
+        #uncomment this option if syntax: --ignore '1' '2' '3' is preferable to --ignore '1' --ignore '2', etc.
+        #parser.add_argument("--ignore", nargs="*", help="ignore the supplied file")
+        parser.add_argument("-g", "--ignore-glob", action="append", help="ignore file(s) matching glob.")
+        parser.add_argument('-f', '--fake_filepaths', help="replace real filepaths with fake ones", action='store_true')
+        args = parser.parse_args()
+
+        if args.cpu_count:
+            cpu_count = args.cpu_count
+        elif 'LIAN_CPU_COUNT' in environ:
+            cpu_count = int(environ['LIAN_CPU_COUNT'])
+        else:
+            logging.warning("--cpu-count, LIAN_CPU_COUNT are undefined. Using maximum cpu count.")
+            cpu_count = cpu_count()
+
+        if args.input_directory:
+            input_path = args.input_directory
+        elif 'LIAN_INPUT_PATH' in environ:
+            input_path = environ['LIAN_INPUT_PATH']
+        else:
+            # TODO: An argparse Error may be more appropriate.
+            raise ValueError("An input path must be defined using -i option, or by defining 'LIAN_INPUT_PATH' in the environment.")
+
+        # verify input_path is real
+        if not path.exists(input_path):
+            raise ValueError("%s is not a valid input path. Please specify a valid directory." % input_path)
+
+        if args.output_directory:
+            output_path = args.output_directory
+        elif 'LIAN_OUTPUT_PATH' in environ:
+            output_path = environ['LIAN_OUTPUT_PATH']
+        else:
+            raise ValueError("An output path must be defined using -o option, or by defining 'LIAN_OUTPUT_PATH' in the environment.")
+
+        if not path.exists(output_path):
+            try:
+                makedirs(output_path, exist_ok=True)
+            except PermissionError as e:
+                raise ValueError("The output path '%s' could not be created." % output_path)
+
+        if args.log_directory:
+            log_path = args.log_directory
+        elif 'LIAN_LOG_PATH' in environ:
+            log_path = environ['LIAN_LOG_PATH']
+        else:
+            log_path = getcwd()
+
+        if not path.exists(log_path):
+            raise ValueError("%s is not a valid input path. Please specify a valid directory." % log_path)
+
+        log_path = "%s/LiAnPreProcessor.log" % log_path
+
+        logging.basicConfig(filename=log_path,
+                            format='%(asctime)s %(message)s',
+                            level=logging_level)
+
+    except ValueError as e:
+        # If either path remains undefined, print the error message raised and exit with a non-zero value.
+        print(e)
+        logging.info(e)
+        exit(1)
+
+    logging.info("cpu count: %d" % cpu_count)
+    logging.info("input path: %s" % input_path)
+    logging.info("output path: %s" % output_path)
+    logging.info("log path: %s" % log_path)
+
+    wd = WorkingDirectory(base_dir=output_path)
+
+    output_files = main(cpu_count, input_path, wd.get_directory(), user_defined_filters=args.ignore_glob, fake_file_paths=args.fake_filepaths)
+
+    logging.info(output_files)
+
+    logging.info("Process Completed")
+

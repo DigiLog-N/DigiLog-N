@@ -1,9 +1,12 @@
-from PlasmaReader import PlasmaReader
-from DataSourceRegistry import DataSourceRegistry
+#!/usr/bin/env python
+#from lian_preprocessor.LiAnPreProcessor import main
+import logging
+from os import environ, path, makedirs, getcwd
+from argparse import ArgumentParser
+from digilog_n.PlasmaReader import PlasmaReader
+from digilog_n.DataSourceRegistry import DataSourceRegistry
 from time import sleep
-from NotifyWriter import NotifyWriter
-
-
+from digilog_n.NotifyWriter import NotifyWriter
 
 
 def main():

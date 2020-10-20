@@ -1,6 +1,6 @@
-from PlasmaReader import PlasmaReader
-from GMailUser import GMailUser
-from DataSourceRegistry import DataSourceRegistry
+from digilog_n.DataSourceRegistry import DataSourceRegistry
+from digilog_n.PlasmaReader import PlasmaReader
+from digilog_n.GMailUser import GMailUser
 from time import sleep
 
 
@@ -44,11 +44,15 @@ def main():
 
     pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'NOTIFY', remove_after_reading=True)
 
+    print("Looking for notifications...")
+    print("This system will poll Plasma once every second to check for any new notifications.")
+    print("You will only be notified when a new result is found. Silence = no new results found.")
+
     while True:
-        print("Looking for notifications...")
         pdf = pr.to_pandas()
         if pdf is None:
-            print("No new notifications")
+            #print("No new notifications")
+            pass
         else:
             print("New notifications!")
             pdf = pdf.sort_values(by=['epoch_timestamp'])
@@ -63,9 +67,9 @@ def main():
 
                 email_main(user, password, subject, message, recipients)
 
-        print("sleeping 10 seconds...")
         # sleep an arbitrary amount before checking for more notifications 
-        sleep(10)
+        # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.
+        sleep(1)
 
 if __name__ == '__main__':
     main()

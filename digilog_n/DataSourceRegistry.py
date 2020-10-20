@@ -1,6 +1,6 @@
+from digilog_n.DataSource import DataSource
 import pymongo
 import json
-from DataSource import DataSource
 
 
 class DataSourceRegistry:

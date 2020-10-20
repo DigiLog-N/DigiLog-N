@@ -1,7 +1,6 @@
-from smtplib import SMTP, SMTPHeloError, SMTPAuthenticationError, SMTPNotSupportedError, SMTPException, SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError
 from email.mime.text import MIMEText
+from smtplib import SMTP, SMTPHeloError, SMTPAuthenticationError, SMTPNotSupportedError, SMTPException, SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError
 from socket import gaierror
-from argparse import ArgumentParser
 
 
 class TLSUser:

@@ -1,8 +1,4 @@
-from smtplib import SMTP, SMTPHeloError, SMTPAuthenticationError, SMTPNotSupportedError, SMTPException, SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError
-from email.mime.text import MIMEText
-from socket import gaierror
-from argparse import ArgumentParser
-from TLSUser import TLSUser
+from digilog_n.TLSUser import TLSUser
 
 
 class GMailUser(TLSUser):

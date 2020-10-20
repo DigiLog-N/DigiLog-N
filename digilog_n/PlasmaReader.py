@@ -1,14 +1,14 @@
 # Charles Cowart, Canvass Labs, Inc.
 # based on work by John P. Wilson, Erigo Technologies
+from digilog_n.DataSource import DataSource
+from digilog_n.DataSourceRegistry import DataSourceRegistry
 import json
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 import pyarrow.plasma as plasma
 import pymongo
 import sys
-from DataSource import DataSource
-from DataSourceRegistry import DataSourceRegistry
-import pandas as pd
 
 
 class PlasmaReader:

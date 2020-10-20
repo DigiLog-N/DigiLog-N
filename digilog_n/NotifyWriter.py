@@ -1,6 +1,6 @@
 from pyarrow import array as pa_array
 from pyarrow import record_batch
-from PlasmaWriter import PlasmaWriter
+from digilog_n.PlasmaWriter import PlasmaWriter
 from time import time
 
 

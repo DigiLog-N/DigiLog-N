@@ -6,7 +6,7 @@ with open("README.md", 'r') as f:
 
 setuptools.setup(
         name='digilog_n',
-        version='0.0.3',
+        version='0.0.4',
         author='Canvass Labs Inc.',
         author_email='charlie@canvasslabs.com',
         description='DigiLog-N library',

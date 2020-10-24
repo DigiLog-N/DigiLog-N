@@ -1,12 +1,6 @@
-#!/usr/bin/env python
-#from lian_preprocessor.LiAnPreProcessor import main
-import logging
-from os import environ, path, makedirs, getcwd
-from argparse import ArgumentParser
-from digilog_n.DataSourceRegistry import DataSourceRegistry
-from digilog_n.PlasmaReader import PlasmaReader
 from digilog_n.GMailUser import GMailUser
-from time import sleep
+from smtplib import SMTPHeloError, SMTPAuthenticationError, SMTPNotSupportedError, SMTPException, SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError 
+from socket import gaierror
 
 
 def email_main(user, password, subject, message, addressed_to):
@@ -36,45 +30,3 @@ def email_main(user, password, subject, message, addressed_to):
         #  to prevent downstream code from having to know/handle all of these very specific errors.
         #  Yet, we want to be fairly robust; we need to know if a user did not receive an email.
         raise ValueError("Server replied w/unexpected error code: %s" % str(e))
-
-
-def main():
-    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
-
-    data_source = dsr.get_data_source('DigiLog-N Notifications')
-
-    if not data_source:
-        print("Error: Could not locate Notifications data-source.")
-        exit(1)
-
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'NOTIFY', remove_after_reading=True)
-
-    print("Looking for notifications...")
-    print("This system will poll Plasma once every second to check for any new notifications.")
-    print("You will only be notified when a new result is found. Silence = no new results found.")
-
-    while True:
-        pdf = pr.to_pandas()
-        if pdf is None:
-            #print("No new notifications")
-            pass
-        else:
-            print("New notifications!")
-            pdf = pdf.sort_values(by=['epoch_timestamp'])
-
-            user = "cowartcharles1@gmail.com"
-            password = "D9AZm244L3UbYwBf"
-
-            for index, row in pdf.iterrows():
-                recipients = row['recipients'].split(',')
-                subject = row['subject']
-                message = row['message']
-
-                email_main(user, password, subject, message, recipients)
-
-        # sleep an arbitrary amount before checking for more notifications 
-        # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.
-        sleep(1)
-
-if __name__ == '__main__':
-    main()

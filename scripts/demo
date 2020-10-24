@@ -1,0 +1,205 @@
+#!/usr/bin/env python
+from argparse import ArgumentParser
+from digilog_n.DataSource import DataSource
+from digilog_n.DataSourceRegistry import DataSourceRegistry
+from digilog_n.EMail import email_main
+from digilog_n.NotifyWriter import NotifyWriter
+from digilog_n.PlasmaReader import PlasmaReader
+from digilog_n.PlasmaWriter import PlasmaWriter
+from multiprocessing import Process
+from os import environ, path, makedirs, getcwd, getpid, getppid
+from pyspark.sql.functions import col, pandas_udf
+from pyspark.sql import SparkSession
+from pyspark.sql.types import LongType
+from sys import stdout, argv
+from time import sleep
+import logging
+import pandas as pd
+import pyarrow as pa
+import pyspark
+import json
+from random import randrange
+
+
+mylogger = logging.getLogger("mylogger")
+formatter = logging.Formatter('[%(levelname)s] %(message)s')
+handler = logging.StreamHandler(stream=stdout)
+handler.setFormatter(formatter)
+handler.setLevel(logging.DEBUG)
+mylogger.addHandler(handler)
+mylogger.setLevel(logging.DEBUG)
+mylogger.critical("Showing")
+mylogger.error("Showing")
+mylogger.warning("Showing")
+mylogger.info("Showing")
+mylogger.debug("Showing")
+
+
+def email_notification_module(msg):
+    mylogger.info('Notification Module: Starting...')
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+
+    ds_name = 'DigiLog-N Notifications'
+
+    data_source = dsr.get_data_source(ds_name)
+
+    if not data_source:
+        mylogger.error("Notification Module: Could not locate data-source: %s" % ds_name)
+        exit(1)
+
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'NOTIFY', remove_after_reading=True)
+
+    while True:
+        pdf = pr.to_pandas()
+        if pdf is None:
+            mylogger.debug("Notification Module: No new notifications")
+            pass
+        else:
+            mylogger.info("Notification Module: New notifications")
+            pdf = pdf.sort_values(by=['epoch_timestamp'])
+
+            user = "cowartcharles1@gmail.com"
+            password = "D9AZm244L3UbYwBf"
+
+            for index, row in pdf.iterrows():
+                recipients = row['recipients'].split(',')
+                subject = row['subject']
+                message = row['message']
+
+                email_main(user, password, subject, message, recipients)
+
+        # sleep an arbitrary amount before checking for more notifications 
+        # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.
+        sleep(3)
+
+
+def decision_maker(msg):
+    mylogger.info('Decision Maker: Starting...')
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+
+    ds_name = 'DigiLog-N Notifications'
+
+    data_source = dsr.get_data_source(ds_name)
+
+    if not data_source:
+        mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
+        exit(1)
+
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'SPARK_RSLT', remove_after_reading=True)
+    nw = NotifyWriter(data_source.get_path_to_plasma_file())
+
+    sleep_time = 3
+
+    while True:
+        pdf = pr.to_pandas()
+        if pdf is None:
+            mylogger.debug("No new results from Spark")
+        else:
+            mylogger.info("New results from Spark")
+            mylogger.info("Notifying the right people...")
+            nw.write(['unique.identifier@gmail.com', 'ucsdboy@gmail.com'], 'We have a new result from Spark.', 'new results from spark')
+
+        mylogger.debug("sleeping %d seconds..." % sleep_time)
+        # sleep an arbitrary amount before checking for more notifications 
+        sleep(sleep_time)
+
+
+def analysis_layer(msg):
+    mylogger.info('Analysis Layer: Starting...')
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+
+    ds_name = 'PHM08 Prognostics Data Challenge Dataset'
+
+    mylogger.info("Analysis Layer: Getting '%s' from Plasma..." % ds_name)
+
+    data_source = dsr.get_data_source(ds_name)
+
+    if not data_source:
+        mylogger.error("Analysis Layer: Could not locate data-source: %s" % ds_name)
+        exit(1)
+
+    mylogger.info("Analysis Layer: Setting up for Spark...")
+
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'PHM08')
+
+    pdf = pr.to_pandas()
+
+    spark = SparkSession.builder.getOrCreate()
+
+    spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+    spark.conf.set("spark.sql.execution.arrow.pyspark.fallback.enabled", "false")
+    spark.conf.set("spark.sql.parquet.mergeSchema", "false")
+    spark.conf.set("spark.hadoop.parquet.enable.summary-metadata", "false")
+
+    def add_func(a, b):
+        return a + b
+
+    add_me = pandas_udf(add_func, returnType=LongType())
+
+    sdf = spark.createDataFrame(pdf)
+
+    mylogger.info("Analysis Layer: Spark Working...")
+
+    result_pdf = sdf.select(add_me(col("op1"), col("op2"))).toPandas()
+
+    mylogger.info("Analysis Layer: Spark Finished...")
+
+    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'SPARK_RSLT')
+
+    key = pw.from_pandas(result_pdf)
+
+    mylogger.info("Analysis Layer: Spark Results (%s) added to Plasma" % key)
+
+
+def fake_ims(inventory_csv_path):
+    mylogger.info('Fake IMS: Starting...')
+    mylogger.info('Fake IMS: Using Inventory File: %s...' % inventory_csv_path)
+
+    parts_inventory = pd.read_csv(inventory_csv_path)
+    mylogger.info(parts_inventory.head())
+
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+
+    ds_name = 'DigiLog-N Notifications'
+
+    data_source = dsr.get_data_source(ds_name)
+
+    if not data_source:
+        mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
+        exit(1)
+
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'INV_RQST', remove_after_reading=True)
+    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'INV_RSLT')
+
+    while True:
+        pdf = pr.to_pandas()
+        if pdf is None:
+            pass
+        else:
+            mylogger.info("New request for inventory")
+            key = pw.from_pandas(parts_inventory)
+
+        # sleep an arbitrary amount before checking for more notifications 
+        sleep(1)
+
+
+if __name__ == '__main__':
+    msg = 'random message'
+
+    processes = []
+
+    inventory_file_path = argv[1]
+
+    processes.append(Process(target=email_notification_module, args=(msg,)))
+    processes.append(Process(target=decision_maker, args=(msg,)))
+    processes.append(Process(target=analysis_layer, args=(msg,)))
+    processes.append(Process(target=fake_ims, args=(inventory_file_path,)))
+
+    for p in processes:
+        p.start()
+
+    for p in processes:
+        p.join()
+
+
+

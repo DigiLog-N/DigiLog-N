@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+import logging
+from os import environ, path, makedirs, getcwd
+from argparse import ArgumentParser
+from digilog_n.PlasmaReader import PlasmaReader
+from digilog_n.DataSourceRegistry import DataSourceRegistry
+from time import sleep
+from digilog_n.PlasmaWriter import PlasmaWriter
+import json
+from random import randrange
+import pandas
+import sys
+
+
+def main():
+    parts_inventory = pandas.read_csv(sys.argv[1])
+    print(parts_inventory.head())
+
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+
+    data_source = dsr.get_data_source('DigiLog-N Notifications')
+
+    if not data_source:
+        print("Error: Could not locate data-source.")
+        exit(1)
+
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'INV_RQST', remove_after_reading=True)
+    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'INV_RSLT')
+
+    while True:
+        print("Looking at data....")
+        pdf = pr.to_pandas()
+        if pdf is None:
+            print("No new requests for inventory.")
+        else:
+            print("New request for inventory!")
+            key = pw.from_pandas(parts_inventory)
+
+        print("sleeping 10 seconds...")
+        # sleep an arbitrary amount before checking for more notifications 
+        sleep(10)
+
+if __name__ == '__main__':
+    main()

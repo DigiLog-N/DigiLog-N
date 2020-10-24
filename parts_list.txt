@@ -1,0 +1,13 @@
+part, quantity, location
+fan rotor, 27, Location1
+low-pressure compressor rotor, 19, Location2
+high-pressure compressor rotor, 10, Location3
+high-pressure shaft, 78, Location4
+high-pressure turbine rotor, 27, Location5
+low-pressure turbine rotor, 56, Location6
+exhaust nozzle, 67, Location7
+fuel-injector, 45, Location8
+inlet housing, 28, Location9
+fuel-nozzle, 29, Location10
+stator, 23, Location11
+vacuum pump, 98, Location12

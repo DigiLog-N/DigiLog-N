@@ -73,37 +73,6 @@ def email_notification_module(msg):
         sleep(3)
 
 
-def decision_maker(msg):
-    mylogger.info('Decision Maker: Starting...')
-    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
-
-    ds_name = 'DigiLog-N Notifications'
-
-    data_source = dsr.get_data_source(ds_name)
-
-    if not data_source:
-        mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
-        exit(1)
-
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'SPARK_RSLT', remove_after_reading=True)
-    nw = NotifyWriter(data_source.get_path_to_plasma_file())
-
-    sleep_time = 3
-
-    while True:
-        pdf = pr.to_pandas()
-        if pdf is None:
-            mylogger.debug("No new results from Spark")
-        else:
-            mylogger.info("New results from Spark")
-            mylogger.info("Notifying the right people...")
-            nw.write(['unique.identifier@gmail.com', 'ucsdboy@gmail.com'], 'We have a new result from Spark.', 'new results from spark')
-
-        mylogger.debug("sleeping %d seconds..." % sleep_time)
-        # sleep an arbitrary amount before checking for more notifications 
-        sleep(sleep_time)
-
-
 def analysis_layer(msg):
     mylogger.info('Analysis Layer: Starting...')
     dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
@@ -181,6 +150,54 @@ def fake_ims(inventory_csv_path):
 
         # sleep an arbitrary amount before checking for more notifications 
         sleep(1)
+
+
+def decision_maker(msg):
+    '''
+    process results from spark.
+    the results will come on a per engine unit, per cycle basis.
+    this means that an engine unit with 169 cycles on it will have 169 spark results on Plasma.
+    
+    at the simplest level, we need to look at the message, and if it crosses a threshold:
+        check metadata for a list of parts needing replacing when this happens.
+        check inventory for the list of parts and see if they're available.
+        if a part is available, request that it be directed to the squadron, for the unit in question.
+        if a part is not available, request that one be ordered, and directed ot the squadron, for the unit in question.
+        look up the people who need to be notified (logistics officer, maint crew) from metadata.
+        send them notifications that prediction x on engine n necessitated parts ordering.
+            the following parts are available at these locations.
+            the following parts are not available, and have been ordered.
+
+    we need to know when parts have already been requested. we don't want to repeat order.
+    '''
+    mylogger.info('Decision Maker: Starting...')
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+
+    ds_name = 'DigiLog-N Notifications'
+
+    data_source = dsr.get_data_source(ds_name)
+
+    if not data_source:
+        mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
+        exit(1)
+
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'SPARK_RSLT', remove_after_reading=True)
+    nw = NotifyWriter(data_source.get_path_to_plasma_file())
+
+    sleep_time = 3
+
+    while True:
+        pdf = pr.to_pandas()
+        if pdf is None:
+            mylogger.debug("No new results from Spark")
+        else:
+            mylogger.info("New results from Spark")
+            mylogger.info("Notifying the right people...")
+            nw.write(['unique.identifier@gmail.com', 'ucsdboy@gmail.com'], 'We have a new result from Spark.', 'new results from spark')
+
+        mylogger.debug("sleeping %d seconds..." % sleep_time)
+        # sleep an arbitrary amount before checking for more notifications 
+        sleep(sleep_time)
 
 
 if __name__ == '__main__':

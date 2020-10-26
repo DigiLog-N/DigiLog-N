@@ -25,9 +25,9 @@ mylogger = logging.getLogger("mylogger")
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler(stream=stdout)
 handler.setFormatter(formatter)
-handler.setLevel(logging.DEBUG)
+handler.setLevel(logging.INFO)
 mylogger.addHandler(handler)
-mylogger.setLevel(logging.DEBUG)
+mylogger.setLevel(logging.INFO)
 mylogger.critical("Showing")
 mylogger.error("Showing")
 mylogger.warning("Showing")
@@ -113,7 +113,7 @@ def analysis_layer(msg):
 
     mylogger.info("Analysis Layer: Spark Finished...")
 
-    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'SPARK_RSLT')
+    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'RUL_RSLT')
 
     key = pw.from_pandas(result_pdf)
 
@@ -181,7 +181,7 @@ def decision_maker(msg):
         mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
         exit(1)
 
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'SPARK_RSLT', remove_after_reading=True)
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'RUL_RSLT', remove_after_reading=True)
     nw = NotifyWriter(data_source.get_path_to_plasma_file())
 
     sleep_time = 3
@@ -209,7 +209,7 @@ if __name__ == '__main__':
 
     processes.append(Process(target=email_notification_module, args=(msg,)))
     processes.append(Process(target=decision_maker, args=(msg,)))
-    processes.append(Process(target=analysis_layer, args=(msg,)))
+    # processes.append(Process(target=analysis_layer, args=(msg,)))
     processes.append(Process(target=fake_ims, args=(inventory_file_path,)))
 
     for p in processes:

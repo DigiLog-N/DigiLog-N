@@ -6,6 +6,7 @@ from digilog_n.EMail import email_main
 from digilog_n.NotifyWriter import NotifyWriter
 from digilog_n.PlasmaReader import PlasmaReader
 from digilog_n.PlasmaWriter import PlasmaWriter
+from digilog_n.RULResultReader import RULResultReader
 from multiprocessing import Process
 from os import environ, path, makedirs, getcwd, getpid, getppid
 from pyspark.sql.functions import col, pandas_udf
@@ -19,6 +20,7 @@ import pyarrow as pa
 import pyspark
 import json
 from random import randrange
+from subprocess import Popen, PIPE
 
 
 mylogger = logging.getLogger("mylogger")
@@ -87,37 +89,41 @@ def analysis_layer(msg):
         mylogger.error("Analysis Layer: Could not locate data-source: %s" % ds_name)
         exit(1)
 
-    mylogger.info("Analysis Layer: Setting up for Spark...")
+    while True:
+        mylogger.info("Analysis Layer checking for new PHM08 data...")
+        pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'PHM08')
 
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'PHM08')
+        latest_keys = pr.get_latest_keys()
 
-    pdf = pr.to_pandas()
+        if latest_keys:
+            # There are new data points for Spark to process
+            mylogger.info("Analysis Layer: Initiating Spark...")
+            object_ids = ' '.join(latest_keys)
+            mylogger.debug("New keys: %s" % object_ids)
 
-    spark = SparkSession.builder.getOrCreate()
+            '''
+            Currently, RUL-Net does its own pulling of the data from Plasma.
+            Since additional keys may become available after we start RUL-Net,
+            We tell RUL-Net what the latest keys are, and it assembles a
+            history of each engine unit up to the point of the latest keys.
+            Anything newer should be ignored.
 
-    spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
-    spark.conf.set("spark.sql.execution.arrow.pyspark.fallback.enabled", "false")
-    spark.conf.set("spark.sql.parquet.mergeSchema", "false")
-    spark.conf.set("spark.hadoop.parquet.enable.summary-metadata", "false")
+            This allows us to control the lifetime of PHM08 data, as several
+            clients will be making use of it, including this program, Spark,
+            and Cassandra. 
+            '''
 
-    def add_func(a, b):
-        return a + b
+            cmd_line = 'cd /home/charlie/RUL-Net_CL; . ./setvars.sh; . venv/bin/activate; ./run_spark.sh %s' % object_ids
+            child = Popen(cmd_line, shell=True, stderr=PIPE, stdout=PIPE)
+            out, err = child.communicate()
+            l = out.decode('ascii').split('\n')
+            l += err.decode('ascii').split('\n')
+            for line in l:
+                mylogger.debug(line)
+        else:
+            mylogger.debug("No new PHM08 data")
 
-    add_me = pandas_udf(add_func, returnType=LongType())
-
-    sdf = spark.createDataFrame(pdf)
-
-    mylogger.info("Analysis Layer: Spark Working...")
-
-    result_pdf = sdf.select(add_me(col("op1"), col("op2"))).toPandas()
-
-    mylogger.info("Analysis Layer: Spark Finished...")
-
-    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'RUL_RSLT')
-
-    key = pw.from_pandas(result_pdf)
-
-    mylogger.info("Analysis Layer: Spark Results (%s) added to Plasma" % key)
+        sleep(10)
 
 
 def fake_ims(inventory_csv_path):
@@ -149,15 +155,11 @@ def fake_ims(inventory_csv_path):
             key = pw.from_pandas(parts_inventory)
 
         # sleep an arbitrary amount before checking for more notifications 
-        sleep(1)
+        sleep(3)
 
 
 def decision_maker(msg):
     '''
-    process results from spark.
-    the results will come on a per engine unit, per cycle basis.
-    this means that an engine unit with 169 cycles on it will have 169 spark results on Plasma.
-    
     at the simplest level, we need to look at the message, and if it crosses a threshold:
         check metadata for a list of parts needing replacing when this happens.
         check inventory for the list of parts and see if they're available.
@@ -181,19 +183,22 @@ def decision_maker(msg):
         mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
         exit(1)
 
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'RUL_RSLT', remove_after_reading=True)
+    rrr = RULResultReader(data_source.get_path_to_plasma_file(), remove_after_reading=True)
     nw = NotifyWriter(data_source.get_path_to_plasma_file())
 
-    sleep_time = 3
+    sleep_time = 3 
 
     while True:
-        pdf = pr.to_pandas()
-        if pdf is None:
+        results = rrr.to_pandas()
+        if results is None:
             mylogger.debug("No new results from Spark")
         else:
-            mylogger.info("New results from Spark")
-            mylogger.info("Notifying the right people...")
-            nw.write(['unique.identifier@gmail.com', 'ucsdboy@gmail.com'], 'We have a new result from Spark.', 'new results from spark')
+            mylogger.info("New results from Spark - notifying...")
+            for engine_unit in results:
+                pdf = results[engine_unit]
+                predictions = pdf.to_csv()
+                message = '%s\n%s' % (engine_unit, predictions)
+                nw.write(['ucsdboy@gmail.com'], message, 'new results from spark')
 
         mylogger.debug("sleeping %d seconds..." % sleep_time)
         # sleep an arbitrary amount before checking for more notifications 
@@ -209,7 +214,7 @@ if __name__ == '__main__':
 
     processes.append(Process(target=email_notification_module, args=(msg,)))
     processes.append(Process(target=decision_maker, args=(msg,)))
-    # processes.append(Process(target=analysis_layer, args=(msg,)))
+    processes.append(Process(target=analysis_layer, args=(msg,)))
     processes.append(Process(target=fake_ims, args=(inventory_file_path,)))
 
     for p in processes:

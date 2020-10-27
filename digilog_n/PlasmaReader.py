@@ -93,3 +93,15 @@ class PlasmaReader:
             return consolidated_table.to_pandas()
 
         return None
+
+    def get_latest_keys(self):
+        # any key successfully read by _read_from_key() will append the
+        # key to self.keys_read. This set difference operation will ensure
+        # only keys that haven't already been processed successfully will be
+        # read.
+        latest_keys = list(set(self._get_keys()) - set(self.keys_read))
+
+        if latest_keys:
+            return latest_keys
+
+        return None

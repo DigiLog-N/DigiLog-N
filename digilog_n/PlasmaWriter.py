@@ -22,8 +22,13 @@ class PlasmaWriter:
 
         return mock_sink.size()
 
-    def _write(self, my_batch):
-        id_string = self.key_prefix + ''.join(choice(digits) for i in range(20 - len(self.key_prefix)))
+    def _write(self, my_batch, id_string=None):
+        if not id_string:
+            id_string = self.key_prefix + ''.join(choice(digits) for i in range(20 - len(self.key_prefix)))
+
+        if len(id_string) != 20:
+            raise ValueError("id_string must be exactly 20 characters in side")
+
         object_id = plasma.ObjectID(bytes(id_string, 'ascii'))
 
         buf = self.client.create(object_id, self._get_size(my_batch))
@@ -40,7 +45,7 @@ class PlasmaWriter:
         object_ids = [plasma.ObjectID(bytes(x, 'ascii')) for x in list_of_keys]
         self.client.delete(object_ids)
 
-    def from_pandas(self, pdf):
+    def from_pandas(self, pdf, id_string=None):
         record_batch = RecordBatch.from_pandas(pdf)
 
-        return self._write(record_batch)
+        return self._write(record_batch, id_string)

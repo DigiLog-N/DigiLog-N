@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from digilog_n.DataSource import DataSource
 from digilog_n.DataSourceRegistry import DataSourceRegistry
 from digilog_n.EMail import email_main
+from digilog_n.Log import log_file_main
 from digilog_n.NotifyWriter import NotifyWriter
 from digilog_n.PlasmaReader import PlasmaReader
 from digilog_n.PlasmaWriter import PlasmaWriter
@@ -37,6 +38,18 @@ mylogger.info("Showing")
 mylogger.debug("Showing")
 
 
+class Layer(Process):
+    def __init__(self):
+        pass
+
+class NotificationLayer(Layer):
+    def __init__(self):
+        pass
+
+    def run(self):
+        pass
+
+
 def email_notification_module(msg):
     mylogger.info('Notification Module: Starting...')
     dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
@@ -51,6 +64,8 @@ def email_notification_module(msg):
 
     pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'NOTIFY', remove_after_reading=True)
 
+    count = 1
+
     while True:
         pdf = pr.to_pandas()
         if pdf is None:
@@ -60,6 +75,9 @@ def email_notification_module(msg):
             mylogger.info("Notification Module: New notifications")
             pdf = pdf.sort_values(by=['epoch_timestamp'])
 
+            pdf.to_csv('/tmp/check%d.csv' % count)
+            count += 1
+
             user = "cowartcharles1@gmail.com"
             password = "D9AZm244L3UbYwBf"
 
@@ -68,7 +86,10 @@ def email_notification_module(msg):
                 subject = row['subject']
                 message = row['message']
 
-                email_main(user, password, subject, message, recipients)
+                #email_main(user, password, subject, message, recipients)
+                log_file_main(user, password, subject, message, recipients)
+
+
 
         # sleep an arbitrary amount before checking for more notifications 
         # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.
@@ -89,11 +110,22 @@ def analysis_layer(msg):
         mylogger.error("Analysis Layer: Could not locate data-source: %s" % ds_name)
         exit(1)
 
+    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'PHM08')
+
     while True:
         mylogger.info("Analysis Layer checking for new PHM08 data...")
-        pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'PHM08')
 
-        latest_keys = pr.get_latest_keys()
+        latest_keys = pr.get_latest_keys(mark_as_read=True)
+
+        with open('/tmp/keys.log', 'a') as f:
+            if latest_keys:
+                f.write("Opening file: %d keys.\n\n" % len(latest_keys))    
+                for key in latest_keys:
+                    f.write("%s\n" % key)
+                f.write("Closing file.\n\n")    
+            else:
+                f.write("Opening file: No new keys.\n\n")
+                f.write("Closing file.\n\n")    
 
         if latest_keys:
             # There are new data points for Spark to process
@@ -101,17 +133,15 @@ def analysis_layer(msg):
             object_ids = ' '.join(latest_keys)
             mylogger.debug("New keys: %s" % object_ids)
 
-            '''
-            Currently, RUL-Net does its own pulling of the data from Plasma.
-            Since additional keys may become available after we start RUL-Net,
-            We tell RUL-Net what the latest keys are, and it assembles a
-            history of each engine unit up to the point of the latest keys.
-            Anything newer should be ignored.
+            # Currently, RUL-Net does its own pulling of the data from Plasma.
+            # Since additional keys may become available after we start RUL-Net,
+            # We tell RUL-Net what the latest keys are, and it assembles a
+            # history of each engine unit up to the point of the latest keys.
+            # Anything newer should be ignored.
 
-            This allows us to control the lifetime of PHM08 data, as several
-            clients will be making use of it, including this program, Spark,
-            and Cassandra. 
-            '''
+            # This allows us to control the lifetime of PHM08 data, as several
+            # clients will be making use of it, including this program, Spark,
+            # and Cassandra. 
 
             cmd_line = 'cd /home/charlie/RUL-Net_CL; . ./setvars.sh; . venv/bin/activate; ./run_spark.sh %s' % object_ids
             child = Popen(cmd_line, shell=True, stderr=PIPE, stdout=PIPE)
@@ -123,7 +153,7 @@ def analysis_layer(msg):
         else:
             mylogger.debug("No new PHM08 data")
 
-        sleep(10)
+        sleep(1)
 
 
 def fake_ims(inventory_csv_path):
@@ -159,19 +189,6 @@ def fake_ims(inventory_csv_path):
 
 
 def decision_maker(msg):
-    '''
-    at the simplest level, we need to look at the message, and if it crosses a threshold:
-        check metadata for a list of parts needing replacing when this happens.
-        check inventory for the list of parts and see if they're available.
-        if a part is available, request that it be directed to the squadron, for the unit in question.
-        if a part is not available, request that one be ordered, and directed ot the squadron, for the unit in question.
-        look up the people who need to be notified (logistics officer, maint crew) from metadata.
-        send them notifications that prediction x on engine n necessitated parts ordering.
-            the following parts are available at these locations.
-            the following parts are not available, and have been ordered.
-
-    we need to know when parts have already been requested. we don't want to repeat order.
-    '''
     mylogger.info('Decision Maker: Starting...')
     dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
 
@@ -193,12 +210,18 @@ def decision_maker(msg):
         if results is None:
             mylogger.debug("No new results from Spark")
         else:
-            mylogger.info("New results from Spark - notifying...")
+            mylogger.debug("New results from Spark - notifying...")
             for engine_unit in results:
                 pdf = results[engine_unit]
                 predictions = pdf.to_csv()
                 message = '%s\n%s' % (engine_unit, predictions)
-                nw.write(['ucsdboy@gmail.com'], message, 'new results from spark')
+                with open('/tmp/sanity_check.log', 'a') as f:
+                    f.write("message: %s\n" % message)
+                    f.write("subject: %s\n" % 'this is a subject line')
+                    f.write("\n")
+                    f.write("\n")
+
+                nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
 
         mylogger.debug("sleeping %d seconds..." % sleep_time)
         # sleep an arbitrary amount before checking for more notifications 

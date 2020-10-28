@@ -71,8 +71,11 @@ class PlasmaReader:
 
         if self.auto_remove:
             self.client.delete([id])
-        else:
-            self.keys_read.append(key)
+
+        self.keys_read.append(key)
+
+        with open('/tmp/keys_read.log', 'a') as f:
+            f.write("KEYS READ: %s" % self.keys_read)
 
         return batch
 
@@ -82,6 +85,9 @@ class PlasmaReader:
         # only keys that haven't already been processed successfully will be
         # read.
         latest_keys = list(set(self._get_keys()) - set(self.keys_read))
+
+        with open('/tmp/keys_read.log', 'a') as f:
+            f.write("LATEST KEYS: %s" % latest_keys)
 
         record_batches = []
 
@@ -94,14 +100,15 @@ class PlasmaReader:
 
         return None
 
-    def get_latest_keys(self):
-        # any key successfully read by _read_from_key() will append the
-        # key to self.keys_read. This set difference operation will ensure
-        # only keys that haven't already been processed successfully will be
-        # read.
+    def get_latest_keys(self, mark_as_read=False):
+        # for the most part, mark_as_read should be left as False.
+        # there are a few rare instances where we might want to get the latest
+        # keys, and let another process perform the reading. In this case,
+        # it's prudent to mark the keys as read for tracking purposes.
         latest_keys = list(set(self._get_keys()) - set(self.keys_read))
 
         if latest_keys:
+            self.keys_read += latest_keys
             return latest_keys
 
         return None

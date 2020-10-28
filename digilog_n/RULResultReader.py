@@ -42,7 +42,9 @@ class RULResultReader(PlasmaReader):
 
         for key in latest_keys:
             table = pa.Table.from_batches([self._read_from_key(key)])
-            results_by_unit[key] = table.to_pandas()
+            pdf = table.to_pandas()
+            engine_unit = pdf.at[0, 'unit_id']
+            results_by_unit[engine_unit] = pdf
 
         if results_by_unit:
             return results_by_unit

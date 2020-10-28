@@ -1,4 +1,5 @@
 from digilog_n.Log import log_file_main
+from digilog_n.EMail import email_main
 from digilog_n.PlasmaReader import PlasmaReader
 from time import sleep
 from digilog_n.Layer import Layer
@@ -42,8 +43,8 @@ class NotificationLayer(Layer):
                     subject = row['subject']
                     message = row['message']
 
-                    #email_main(user, password, subject, message, recipients)
-                    log_file_main(user, password, subject, message, recipients)
+                    email_main(user, password, subject, message, recipients)
+                    #log_file_main(user, password, subject, message, recipients)
 
             # sleep an arbitrary amount before checking for more notifications 
             # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.

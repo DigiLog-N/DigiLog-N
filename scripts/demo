@@ -3,7 +3,7 @@ from sys import stdout, argv
 from digilog_n.Layer.NotificationLayer import NotificationLayer
 from digilog_n.Layer.AnalysisLayer import AnalysisLayer
 from digilog_n.Layer.IdentityLayer import IdentityLayer
-from digilog_n.Layer.FakeIMSLayer import FakeIMSLayer
+from digilog_n.Layer.IMSLayer import IMSLayer
 from digilog_n.Layer.DecisionMakerLayer import DecisionMakerLayer
 import logging
 
@@ -23,16 +23,12 @@ mylogger.debug("Showing DEBUG Messages")
 
 
 if __name__ == '__main__':
-    msg = 'random message'
-
     processes = []
-
-    inventory_file_path = argv[1]
 
     processes.append(NotificationLayer())
     processes.append(DecisionMakerLayer())
     processes.append(AnalysisLayer())
-    processes.append(FakeIMSLayer(inventory_file_path))
+    processes.append(IMSLayer())
     processes.append(IdentityLayer())
 
     for p in processes:

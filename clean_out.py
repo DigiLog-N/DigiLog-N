@@ -11,3 +11,16 @@ df = pr.to_pandas()
 
 pr = PlasmaReader('/tmp/plasma', 'ANNO_GRPS', remove_after_reading=True)
 df = pr.to_pandas()
+
+
+pr = PlasmaReader('/tmp/plasma_full', 'RUL_RSLT', remove_after_reading=True)
+df = pr.to_pandas()
+
+pr = PlasmaReader('/tmp/plasma_full', 'NOTIFY', remove_after_reading=True)
+df = pr.to_pandas()
+
+pr = PlasmaReader('/tmp/plasma_full', 'ANNO_PRTS', remove_after_reading=True)
+df = pr.to_pandas()
+
+pr = PlasmaReader('/tmp/plasma_full', 'ANNO_GRPS', remove_after_reading=True)
+df = pr.to_pandas()

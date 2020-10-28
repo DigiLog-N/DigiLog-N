@@ -22,7 +22,7 @@ class IdentityLayer(Layer):
         while True:
             result = pr.to_pandas()
             if result is None:
-                mylogger.info("No requests to annotate notifications with user groups")
+                mylogger.debug("No requests to annotate notifications with user groups")
             else:
                 mylogger.info("Request to annotate notifications w/user groups")
                 self.annotate(result)
@@ -30,6 +30,17 @@ class IdentityLayer(Layer):
             mylogger.debug("sleeping %d seconds..." % 3)
 
             sleep(3)
+
+    def get_user_group(self, flag):
+        d = {}
+        d['YELLOW'] = ['charlie@canvasslabs.com']
+        d['ORANGE'] = ['charlie@canvasslabs.com']
+        d['RED'] = ['charlie@canvasslabs.com', 'unique.identifier@gmail.com']
+        d['DANGER'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com']
+        d['CRITICAL'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com', 'peter@canvasslabs.com']
+
+        return d[flag]
+
 
     def annotate(self, result):
         nw = NotifyWriter(self.plasma_path)
@@ -49,4 +60,6 @@ class IdentityLayer(Layer):
 
             message = '\n'.join(l)
 
-            nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+            nw.write(self.get_user_group(row['flag']), message, row['flag'])
+
+            l = []

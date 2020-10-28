@@ -156,6 +156,19 @@ class AnalysisLayer(Layer):
             sleep(1)
 
 
+class CassandraLayer(Layer):
+    def __init__(self, inventory_csv_path):
+        super().__init__()
+        self.name = 'Fake IMS'
+        mylogger.info('Fake IMS: Using Inventory File: %s...' % inventory_csv_path)
+        self.parts_inventory = pd.read_csv(inventory_csv_path)
+        mylogger.info(self.parts_inventory.head())
+        self.ds_name = 'DigiLog-N Notifications'
+
+    def run(self):
+        self._before_you_begin()
+
+
 class FakeIMSLayer(Layer):
     def __init__(self, inventory_csv_path):
         super().__init__()
@@ -183,6 +196,65 @@ class FakeIMSLayer(Layer):
             sleep(3)
 
 
+class Condition:
+    def __init__(self, unit_id, current_cycle, rul_prediction):
+        self.unit_id = unit_id
+        self.current_cycle = current_cycle
+        self.rul_prediction = rul_prediction
+
+    def process(self):
+        pass
+
+class CriticalCondition(Condition):
+    def __init__(self, unit_id, current_cycle, rul_prediction):
+        super().__init__(unit_id, current_cycle, rul_prediction)
+        mylogger.info("CRITICAL: %d %d %f" % (unit_id, current_cycle, rul_prediction))
+
+    def process(self):
+        #mqw = PartsQueryWriter(self.plasma_path)
+        #mqw.write('CRITICAL', ['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+        pass
+
+
+
+class DangerCondition(Condition):
+    def __init__(self, unit_id, current_cycle, rul_prediction):
+        super().__init__(unit_id, current_cycle, rul_prediction)
+        mylogger.info("DANGER: %d %d %f" % (unit_id, current_cycle, rul_prediction))
+
+    def process(self):
+        pass
+
+
+class RedCondition(Condition):
+    def __init__(self, unit_id, current_cycle, rul_prediction):
+        super().__init__(unit_id, current_cycle, rul_prediction)
+        mylogger.info("RED: %d %d %f" % (unit_id, current_cycle, rul_prediction))
+
+    def process(self):
+        pass
+
+
+class OrangeCondition(Condition):
+    def __init__(self, unit_id, current_cycle, rul_prediction):
+        super().__init__(unit_id, current_cycle, rul_prediction)
+        mylogger.info("ORANGE: %d %d %f" % (unit_id, current_cycle, rul_prediction))
+
+    def process(self):
+        pass
+
+
+class YellowCondition(Condition):
+    def __init__(self, unit_id, current_cycle, rul_prediction):
+        super().__init__(unit_id, current_cycle, rul_prediction)
+        mylogger.info("YELLOW: %d %d %f" % (unit_id, current_cycle, rul_prediction))
+
+    def process(self):
+        pass
+
+
+
+
 class DecisionMakerLayer(Layer):
     def __init__(self):
         super().__init__()
@@ -202,22 +274,38 @@ class DecisionMakerLayer(Layer):
             if results is None:
                 mylogger.debug("No new results from Spark")
             else:
-                mylogger.debug("New results from Spark - notifying...")
                 for engine_unit in results:
-                    pdf = results[engine_unit]
-                    predictions = pdf.to_csv()
-                    message = '%s\n%s' % (engine_unit, predictions)
-                    with open('/tmp/sanity_check.log', 'a') as f:
-                        f.write("message: %s\n" % message)
-                        f.write("subject: %s\n" % 'this is a subject line')
-                        f.write("\n")
-                        f.write("\n")
-
-                    nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+                    self.decide(engine_unit, results[engine_unit])
+                mylogger.debug("New results from Spark")
 
             mylogger.debug("sleeping %d seconds..." % sleep_time)
             # sleep an arbitrary amount before checking for more notifications 
             sleep(sleep_time)
+
+    def decide(self, engine_unit, prediction_results):
+        latest_cycle = prediction_results.count()[0]
+        unit_id = prediction_results.iloc[-1]['unit_id']
+        prediction = prediction_results.iloc[-1]['rul_predict']
+
+        foo = None
+
+        if prediction < 10:
+            foo = CriticalCondition(unit_id, latest_cycle, prediction)
+        elif prediction < 20:
+            foo = DangerCondition(unit_id, latest_cycle, prediction)
+        elif prediction < 30:
+            foo = RedCondition(unit_id, latest_cycle, prediction)
+        elif prediction < 40:
+            foo = OrangeCondition(unit_id, latest_cycle, prediction)
+        elif prediction < 50:
+            foo = YellowCondition(unit_id, latest_cycle, prediction)
+
+        if foo:
+            foo.process()
+
+        #nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+
+
 
 
 if __name__ == '__main__':

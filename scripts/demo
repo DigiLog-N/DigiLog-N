@@ -5,6 +5,9 @@ from digilog_n.DataSourceRegistry import DataSourceRegistry
 from digilog_n.EMail import email_main
 from digilog_n.Log import log_file_main
 from digilog_n.NotifyWriter import NotifyWriter
+from digilog_n.AnnotatePartsReader import AnnotatePartsReader
+from digilog_n.AnnotatePartsWriter import AnnotatePartsWriter
+from digilog_n.AnnotateGroupsWriter import AnnotateGroupsWriter
 from digilog_n.PlasmaReader import PlasmaReader
 from digilog_n.PlasmaWriter import PlasmaWriter
 from digilog_n.RULResultReader import RULResultReader
@@ -181,78 +184,48 @@ class FakeIMSLayer(Layer):
     def run(self):
         self._before_you_begin()
 
-        pr = PlasmaReader(self.plasma_path, 'INV_RQST', remove_after_reading=True)
-        pw = PlasmaWriter(self.plasma_path, 'INV_RSLT')
+        #pr = AnnotatePartsReader(self.plasma_path, remove_after_reading=True)
+        pr = PlasmaReader(self.plasma_path, 'ANNO_PRTS', remove_after_reading=True)
 
         while True:
-            pdf = pr.to_pandas()
-            if pdf is None:
-                pass
+            mylogger.info("COOL BLUE")
+            # each ANNO_PRTS key contains just a single request
+            result = pr.to_pandas()
+            if result is None:
+                mylogger.info("No requests to annotate notifications with parts lists")
             else:
-                mylogger.info("New request for inventory")
-                key = pw.from_pandas(self.parts_inventory)
+                mylogger.info("Request to annotate notifications w/parts lists")
+                self.annotate(result)
 
-            # sleep an arbitrary amount before checking for more notifications 
+            mylogger.debug("sleeping %d seconds..." % 3)
+
             sleep(3)
 
+    def annotate(self, result):
+        agw = AnnotateGroupsWriter(self.plasma_path)
 
-class Condition:
-    def __init__(self, unit_id, current_cycle, rul_prediction):
-        self.unit_id = unit_id
-        self.current_cycle = current_cycle
-        self.rul_prediction = rul_prediction
+        mylogger.info(result.head())
 
-    def process(self):
-        pass
+        part_set = {}
+        part_set['CRITICAL'] = ['PartA', 'PartB', 'PartC', 'PartD', 'PartE', 'PartF', 'PartG']
+        part_set['DANGER'] = ['PartA', 'PartB', 'PartC', 'PartD', 'PartE', 'PartF']
+        part_set['RED'] = ['PartA', 'PartB', 'PartC', 'PartD', 'PartE']
+        part_set['ORANGE'] = ['PartA', 'PartB', 'PartC', 'PartD']
+        part_set['YELLOW'] = ['PartA', 'PartB', 'PartC']
 
-class CriticalCondition(Condition):
-    def __init__(self, unit_id, current_cycle, rul_prediction):
-        super().__init__(unit_id, current_cycle, rul_prediction)
-        mylogger.info("CRITICAL: %d %d %f" % (unit_id, current_cycle, rul_prediction))
+        for index, row in result.iterrows():
+            unit_id = row['unit_id']
+            prediction = row['prediction']
+            current_cycle = row['current_cycle']
+            flag = row['flag']
 
-    def process(self):
-        #mqw = PartsQueryWriter(self.plasma_path)
-        #mqw.write('CRITICAL', ['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
-        pass
+            result = {  'unit_id': [unit_id],
+                        'prediction': [prediction],
+                        'current_cycle': [current_cycle],
+                        'flag': [flag],
+                        'part_set': [part_set[flag]] }
 
-
-
-class DangerCondition(Condition):
-    def __init__(self, unit_id, current_cycle, rul_prediction):
-        super().__init__(unit_id, current_cycle, rul_prediction)
-        mylogger.info("DANGER: %d %d %f" % (unit_id, current_cycle, rul_prediction))
-
-    def process(self):
-        pass
-
-
-class RedCondition(Condition):
-    def __init__(self, unit_id, current_cycle, rul_prediction):
-        super().__init__(unit_id, current_cycle, rul_prediction)
-        mylogger.info("RED: %d %d %f" % (unit_id, current_cycle, rul_prediction))
-
-    def process(self):
-        pass
-
-
-class OrangeCondition(Condition):
-    def __init__(self, unit_id, current_cycle, rul_prediction):
-        super().__init__(unit_id, current_cycle, rul_prediction)
-        mylogger.info("ORANGE: %d %d %f" % (unit_id, current_cycle, rul_prediction))
-
-    def process(self):
-        pass
-
-
-class YellowCondition(Condition):
-    def __init__(self, unit_id, current_cycle, rul_prediction):
-        super().__init__(unit_id, current_cycle, rul_prediction)
-        mylogger.info("YELLOW: %d %d %f" % (unit_id, current_cycle, rul_prediction))
-
-    def process(self):
-        pass
-
-
+            agw.from_pandas(pd.DataFrame(result))
 
 
 class DecisionMakerLayer(Layer):
@@ -265,7 +238,7 @@ class DecisionMakerLayer(Layer):
         self._before_you_begin()
 
         rrr = RULResultReader(self.plasma_path, remove_after_reading=True)
-        nw = NotifyWriter(self.plasma_path)
+        #nw = NotifyWriter(self.plasma_path)
 
         sleep_time = 3 
 
@@ -283,27 +256,42 @@ class DecisionMakerLayer(Layer):
             sleep(sleep_time)
 
     def decide(self, engine_unit, prediction_results):
+        apw = AnnotatePartsWriter(self.plasma_path)
+
         latest_cycle = prediction_results.count()[0]
         unit_id = prediction_results.iloc[-1]['unit_id']
         prediction = prediction_results.iloc[-1]['rul_predict']
 
-        foo = None
+        # make a new DF with just the last row
+        # append additional data to it as additional columns
+        # create from scratch to bypass copy warning message.
+        latest_result = {'unit_id': [unit_id], 'prediction': [prediction], 'current_cycle': [latest_cycle]}
+
+        flag = None
 
         if prediction < 10:
-            foo = CriticalCondition(unit_id, latest_cycle, prediction)
+            mylogger.info("CRITICAL: %d %d %f" % (unit_id, latest_cycle, prediction))
+            flag = 'CRITICAL'
         elif prediction < 20:
-            foo = DangerCondition(unit_id, latest_cycle, prediction)
+            mylogger.info("DANGER: %d %d %f" % (unit_id, latest_cycle, prediction))
+            flag = 'DANGER'
         elif prediction < 30:
-            foo = RedCondition(unit_id, latest_cycle, prediction)
+            mylogger.info("RED: %d %d %f" % (unit_id, latest_cycle, prediction))
+            flag = 'RED'
         elif prediction < 40:
-            foo = OrangeCondition(unit_id, latest_cycle, prediction)
+            mylogger.info("ORANGE: %d %d %f" % (unit_id, latest_cycle, prediction))
+            flag = 'ORANGE'
         elif prediction < 50:
-            foo = YellowCondition(unit_id, latest_cycle, prediction)
+            mylogger.info("YELLOW: %d %d %f" % (unit_id, latest_cycle, prediction))
+            flag = 'YELLOW'
 
-        if foo:
-            foo.process()
-
-        #nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+        if flag:
+            latest_result['flag'] = [flag]
+            latest_result = pd.DataFrame(latest_result)
+            #mylogger.critical(latest_result.head())
+            apw.from_pandas(latest_result)
+            
+            #nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
 
 
 

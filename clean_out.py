@@ -5,3 +5,9 @@ df = pr.to_pandas()
 
 pr = PlasmaReader('/tmp/plasma', 'NOTIFY', remove_after_reading=True)
 df = pr.to_pandas()
+
+pr = PlasmaReader('/tmp/plasma', 'ANNO_PRTS', remove_after_reading=True)
+df = pr.to_pandas()
+
+pr = PlasmaReader('/tmp/plasma', 'ANNO_GRPS', remove_after_reading=True)
+df = pr.to_pandas()

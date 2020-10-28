@@ -31,201 +31,193 @@ handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
 mylogger.addHandler(handler)
 mylogger.setLevel(logging.INFO)
-mylogger.critical("Showing")
-mylogger.error("Showing")
-mylogger.warning("Showing")
-mylogger.info("Showing")
-mylogger.debug("Showing")
+mylogger.critical("Showing CRITICAL Messages")
+mylogger.error("Showing ERROR Messages")
+mylogger.warning("Showing WARNING Messages")
+mylogger.info("Showing INFO Messages")
+mylogger.debug("Showing DEBUG Messages")
 
 
 class Layer(Process):
     def __init__(self):
-        pass
+        super().__init__()
+        self.name = ''
+        self.dsr = None
+        self.ds_name = None
+        self.plasma_path = '/tmp/plasma'
+
+    def _before_you_begin(self):
+        mylogger.info('%s Layer: Starting...' % self.name)
+
+        #self.dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'self.data_sources')
+
+        #self.data_source = self.dsr.get_data_source('DigiLog-N Notifications')  #self.ds_name)
+
+        #mylogger.info("%s Layer: Getting '%s' from Plasma..." % (self.name, self.ds_name))
+
+        #if not self.data_source:
+        #    mylogger.error("%s Layer: Could not locate data-source: %s" % (self.name, self.ds_name))
+        #    exit(1)
+
 
 class NotificationLayer(Layer):
     def __init__(self):
-        pass
+        super().__init__()
+        self.name = 'Notifications'
+        self.ds_name = 'DigiLog-N Notifications'
 
     def run(self):
-        pass
+        self._before_you_begin()
 
+        pr = PlasmaReader(self.plasma_path, 'NOTIFY', remove_after_reading=True)
 
-def email_notification_module(msg):
-    mylogger.info('Notification Module: Starting...')
-    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+        count = 1
 
-    ds_name = 'DigiLog-N Notifications'
-
-    data_source = dsr.get_data_source(ds_name)
-
-    if not data_source:
-        mylogger.error("Notification Module: Could not locate data-source: %s" % ds_name)
-        exit(1)
-
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'NOTIFY', remove_after_reading=True)
-
-    count = 1
-
-    while True:
-        pdf = pr.to_pandas()
-        if pdf is None:
-            mylogger.debug("Notification Module: No new notifications")
-            pass
-        else:
-            mylogger.info("Notification Module: New notifications")
-            pdf = pdf.sort_values(by=['epoch_timestamp'])
-
-            pdf.to_csv('/tmp/check%d.csv' % count)
-            count += 1
-
-            user = "cowartcharles1@gmail.com"
-            password = "D9AZm244L3UbYwBf"
-
-            for index, row in pdf.iterrows():
-                recipients = row['recipients'].split(',')
-                subject = row['subject']
-                message = row['message']
-
-                #email_main(user, password, subject, message, recipients)
-                log_file_main(user, password, subject, message, recipients)
-
-
-
-        # sleep an arbitrary amount before checking for more notifications 
-        # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.
-        sleep(3)
-
-
-def analysis_layer(msg):
-    mylogger.info('Analysis Layer: Starting...')
-    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
-
-    ds_name = 'PHM08 Prognostics Data Challenge Dataset'
-
-    mylogger.info("Analysis Layer: Getting '%s' from Plasma..." % ds_name)
-
-    data_source = dsr.get_data_source(ds_name)
-
-    if not data_source:
-        mylogger.error("Analysis Layer: Could not locate data-source: %s" % ds_name)
-        exit(1)
-
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'PHM08')
-
-    while True:
-        mylogger.info("Analysis Layer checking for new PHM08 data...")
-
-        latest_keys = pr.get_latest_keys(mark_as_read=True)
-
-        with open('/tmp/keys.log', 'a') as f:
-            if latest_keys:
-                f.write("Opening file: %d keys.\n\n" % len(latest_keys))    
-                for key in latest_keys:
-                    f.write("%s\n" % key)
-                f.write("Closing file.\n\n")    
+        while True:
+            pdf = pr.to_pandas()
+            if pdf is None:
+                mylogger.debug("Notification Module: No new notifications")
+                pass
             else:
-                f.write("Opening file: No new keys.\n\n")
-                f.write("Closing file.\n\n")    
+                mylogger.info("Notification Module: New notifications")
+                pdf = pdf.sort_values(by=['epoch_timestamp'])
 
-        if latest_keys:
-            # There are new data points for Spark to process
-            mylogger.info("Analysis Layer: Initiating Spark...")
-            object_ids = ' '.join(latest_keys)
-            mylogger.debug("New keys: %s" % object_ids)
+                pdf.to_csv('/tmp/check%d.csv' % count)
+                count += 1
 
-            # Currently, RUL-Net does its own pulling of the data from Plasma.
-            # Since additional keys may become available after we start RUL-Net,
-            # We tell RUL-Net what the latest keys are, and it assembles a
-            # history of each engine unit up to the point of the latest keys.
-            # Anything newer should be ignored.
+                user = "cowartcharles1@gmail.com"
+                password = "D9AZm244L3UbYwBf"
 
-            # This allows us to control the lifetime of PHM08 data, as several
-            # clients will be making use of it, including this program, Spark,
-            # and Cassandra. 
+                for index, row in pdf.iterrows():
+                    recipients = row['recipients'].split(',')
+                    subject = row['subject']
+                    message = row['message']
 
-            cmd_line = 'cd /home/charlie/RUL-Net_CL; . ./setvars.sh; . venv/bin/activate; ./run_spark.sh %s' % object_ids
-            child = Popen(cmd_line, shell=True, stderr=PIPE, stdout=PIPE)
-            out, err = child.communicate()
-            l = out.decode('ascii').split('\n')
-            l += err.decode('ascii').split('\n')
-            for line in l:
-                mylogger.debug(line)
-        else:
-            mylogger.debug("No new PHM08 data")
+                    #email_main(user, password, subject, message, recipients)
+                    log_file_main(user, password, subject, message, recipients)
 
-        sleep(1)
+            # sleep an arbitrary amount before checking for more notifications 
+            # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.
+            sleep(3)
 
 
-def fake_ims(inventory_csv_path):
-    mylogger.info('Fake IMS: Starting...')
-    mylogger.info('Fake IMS: Using Inventory File: %s...' % inventory_csv_path)
+class AnalysisLayer(Layer):
+    def __init__(self):
+        super().__init__()
+        self.name = 'Analysis'
+        self.ds_name = 'PHM08 Prognostics Data Challenge Dataset'
 
-    parts_inventory = pd.read_csv(inventory_csv_path)
-    mylogger.info(parts_inventory.head())
+    def run(self):
+        self._before_you_begin()
 
-    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+        pr = PlasmaReader(self.plasma_path, 'PHM08')
 
-    ds_name = 'DigiLog-N Notifications'
+        while True:
+            mylogger.info("Analysis Layer checking for new PHM08 data...")
 
-    data_source = dsr.get_data_source(ds_name)
+            latest_keys = pr.get_latest_keys(mark_as_read=True)
 
-    if not data_source:
-        mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
-        exit(1)
+            with open('/tmp/keys.log', 'a') as f:
+                if latest_keys:
+                    f.write("Opening file: %d keys.\n\n" % len(latest_keys))    
+                    for key in latest_keys:
+                        f.write("%s\n" % key)
+                    f.write("Closing file.\n\n")    
+                else:
+                    f.write("Opening file: No new keys.\n\n")
+                    f.write("Closing file.\n\n")    
 
-    pr = PlasmaReader(data_source.get_path_to_plasma_file(), 'INV_RQST', remove_after_reading=True)
-    pw = PlasmaWriter(data_source.get_path_to_plasma_file(), 'INV_RSLT')
+            if latest_keys:
+                # There are new data points for Spark to process
+                mylogger.info("Analysis Layer: Initiating Spark...")
+                object_ids = ' '.join(latest_keys)
+                mylogger.debug("New keys: %s" % object_ids)
 
-    while True:
-        pdf = pr.to_pandas()
-        if pdf is None:
-            pass
-        else:
-            mylogger.info("New request for inventory")
-            key = pw.from_pandas(parts_inventory)
+                # Currently, RUL-Net does its own pulling of the data from Plasma.
+                # Since additional keys may become available after we start RUL-Net,
+                # We tell RUL-Net what the latest keys are, and it assembles a
+                # history of each engine unit up to the point of the latest keys.
+                # Anything newer should be ignored.
 
-        # sleep an arbitrary amount before checking for more notifications 
-        sleep(3)
+                # This allows us to control the lifetime of PHM08 data, as several
+                # clients will be making use of it, including this program, Spark,
+                # and Cassandra. 
+
+                cmd_line = 'cd /home/charlie/RUL-Net_CL; . ./setvars.sh; . venv/bin/activate; ./run_spark.sh %s' % object_ids
+                child = Popen(cmd_line, shell=True, stderr=PIPE, stdout=PIPE)
+                out, err = child.communicate()
+                l = out.decode('ascii').split('\n')
+                l += err.decode('ascii').split('\n')
+                for line in l:
+                    mylogger.debug(line)
+            else:
+                mylogger.debug("No new PHM08 data")
+
+            sleep(1)
 
 
-def decision_maker(msg):
-    mylogger.info('Decision Maker: Starting...')
-    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+class FakeIMSLayer(Layer):
+    def __init__(self, inventory_csv_path):
+        super().__init__()
+        self.name = 'Fake IMS'
+        mylogger.info('Fake IMS: Using Inventory File: %s...' % inventory_csv_path)
+        self.parts_inventory = pd.read_csv(inventory_csv_path)
+        mylogger.info(self.parts_inventory.head())
+        self.ds_name = 'DigiLog-N Notifications'
 
-    ds_name = 'DigiLog-N Notifications'
+    def run(self):
+        self._before_you_begin()
 
-    data_source = dsr.get_data_source(ds_name)
+        pr = PlasmaReader(self.plasma_path, 'INV_RQST', remove_after_reading=True)
+        pw = PlasmaWriter(self.plasma_path, 'INV_RSLT')
 
-    if not data_source:
-        mylogger.error("Decision Maker: Could not locate data-source: %s" % ds_name)
-        exit(1)
+        while True:
+            pdf = pr.to_pandas()
+            if pdf is None:
+                pass
+            else:
+                mylogger.info("New request for inventory")
+                key = pw.from_pandas(self.parts_inventory)
 
-    rrr = RULResultReader(data_source.get_path_to_plasma_file(), remove_after_reading=True)
-    nw = NotifyWriter(data_source.get_path_to_plasma_file())
+            # sleep an arbitrary amount before checking for more notifications 
+            sleep(3)
 
-    sleep_time = 3 
 
-    while True:
-        results = rrr.to_pandas()
-        if results is None:
-            mylogger.debug("No new results from Spark")
-        else:
-            mylogger.debug("New results from Spark - notifying...")
-            for engine_unit in results:
-                pdf = results[engine_unit]
-                predictions = pdf.to_csv()
-                message = '%s\n%s' % (engine_unit, predictions)
-                with open('/tmp/sanity_check.log', 'a') as f:
-                    f.write("message: %s\n" % message)
-                    f.write("subject: %s\n" % 'this is a subject line')
-                    f.write("\n")
-                    f.write("\n")
+class DecisionMakerLayer(Layer):
+    def __init__(self):
+        super().__init__()
+        self.name = 'Decision Maker'
+        self.ds_name = ''
 
-                nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+    def run(self):
+        self._before_you_begin()
 
-        mylogger.debug("sleeping %d seconds..." % sleep_time)
-        # sleep an arbitrary amount before checking for more notifications 
-        sleep(sleep_time)
+        rrr = RULResultReader(self.plasma_path, remove_after_reading=True)
+        nw = NotifyWriter(self.plasma_path)
+
+        sleep_time = 3 
+
+        while True:
+            results = rrr.to_pandas()
+            if results is None:
+                mylogger.debug("No new results from Spark")
+            else:
+                mylogger.debug("New results from Spark - notifying...")
+                for engine_unit in results:
+                    pdf = results[engine_unit]
+                    predictions = pdf.to_csv()
+                    message = '%s\n%s' % (engine_unit, predictions)
+                    with open('/tmp/sanity_check.log', 'a') as f:
+                        f.write("message: %s\n" % message)
+                        f.write("subject: %s\n" % 'this is a subject line')
+                        f.write("\n")
+                        f.write("\n")
+
+                    nw.write(['ucsdboy@gmail.com', 'unique.identifier@gmail.com'], message, 'new results from spark')
+
+            mylogger.debug("sleeping %d seconds..." % sleep_time)
+            # sleep an arbitrary amount before checking for more notifications 
+            sleep(sleep_time)
 
 
 if __name__ == '__main__':
@@ -235,10 +227,10 @@ if __name__ == '__main__':
 
     inventory_file_path = argv[1]
 
-    processes.append(Process(target=email_notification_module, args=(msg,)))
-    processes.append(Process(target=decision_maker, args=(msg,)))
-    processes.append(Process(target=analysis_layer, args=(msg,)))
-    processes.append(Process(target=fake_ims, args=(inventory_file_path,)))
+    processes.append(NotificationLayer())
+    processes.append(DecisionMakerLayer())
+    processes.append(AnalysisLayer())
+    processes.append(FakeIMSLayer(inventory_file_path))
 
     for p in processes:
         p.start()

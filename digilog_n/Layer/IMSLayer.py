@@ -4,6 +4,7 @@ from time import sleep
 import pandas as pd
 from digilog_n.Layer import Layer
 import logging
+from uuid import uuid4
 
 
 mylogger = logging.getLogger("mylogger")
@@ -49,15 +50,17 @@ class IMSLayer(Layer):
         part_locations['PartF'] = {'LocationD': 21, 'LocationR': 88}
         part_locations['PartG'] = {'LocationY': 7, 'LocationL': 23}
 
-        foo = []
+        results = []
+        for part_name in part_set[flag]:
+            for location in part_locations[part_name]:
+                row = []
+                row.append(part_name)
+                row.append(location)
+                row.append(part_locations[part_name][location])
+                row.append(1)
+                results.append(row)
 
-        for item in part_set[flag]:
-            d = {}
-            d['part_name'] = item
-            d['locations_found'] = part_locations[item]
-            foo.append(d)
-
-        return foo
+        return results
 
     def annotate(self, result):
         agw = AnnotateGroupsWriter(self.plasma_path)
@@ -70,12 +73,35 @@ class IMSLayer(Layer):
             current_cycle = row['current_cycle']
             flag = row['flag']
 
-            parts = self.get_parts(flag)
+            # Create an eight column-wide DataFrame. Set up the first four
+            # columns, which will be repeated through all n rows:
+            prepend = [unit_id, prediction, current_cycle, flag]
 
-            result = {  'unit_id': [unit_id],
-                        'prediction': [prediction],
-                        'current_cycle': [current_cycle],
-                        'flag': [flag],
-                        'part_set': [parts] }
+            # Get the parts-set associated with this flag. get_parts()
+            # munges the parts-set with the location and quantity of each
+            # part, and results a tablular-formatted result.
+            results = self.get_parts(flag)
 
-            agw.from_pandas(pd.DataFrame(result))
+            # create the new table as a list of rows
+            tbl = []
+            for row in results:
+                tbl.append(prepend + row)
+
+            # before turning it into a DataFrame, it needs to be turned
+            # into columns.
+
+            uid = str(uuid4())
+
+            results = { 'unique_id': [uid for x in tbl], 
+                        'unit_id': [x[0] for x in tbl],
+                        'prediction': [x[1] for x in tbl],
+                        'current_cycle' : [x[2] for x in tbl],
+                        'flag': [x[3] for x in tbl],
+                        'part': [x[4] for x in tbl],
+                        'location': [x[5] for x in tbl],
+                        'qty_available': [x[6] for x in tbl],
+                        'qty_requested': [x[7] for x in tbl]}
+
+            # push the new DataFrame into the system
+            agw.from_pandas(pd.DataFrame(results))
+

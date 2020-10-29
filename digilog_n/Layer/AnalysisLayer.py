@@ -21,7 +21,7 @@ class AnalysisLayer(Layer):
         while True:
             mylogger.info("Analysis Layer checking for new PHM08 data...")
 
-            latest_keys = pr.get_latest_keys(mark_as_read=True)
+            latest_keys = pr.get_latest_keys()
 
             with open('/tmp/keys.log', 'a') as f:
                 if latest_keys:

@@ -86,8 +86,9 @@ class PlasmaReader:
         # read.
         latest_keys = list(set(self._get_keys()) - set(self.keys_read))
 
-        with open('/tmp/keys_read.log', 'a') as f:
-            f.write("LATEST KEYS: %s" % latest_keys)
+        # not robust against arbitrary ObjectID names, but successfully orders PHM08
+        # ObjectIDs numerically.
+        latest_keys.sort()
 
         record_batches = []
 
@@ -100,14 +101,13 @@ class PlasmaReader:
 
         return None
 
-    def get_latest_keys(self, mark_as_read=False):
-        # for the most part, mark_as_read should be left as False.
-        # there are a few rare instances where we might want to get the latest
-        # keys, and let another process perform the reading. In this case,
-        # it's prudent to mark the keys as read for tracking purposes.
+    def get_latest_keys(self):
         latest_keys = list(set(self._get_keys()) - set(self.keys_read))
 
         if latest_keys:
+            # not robust against arbitrary ObjectID names, but successfully orders PHM08
+            # ObjectIDs numerically.
+            latest_keys.sort()
             self.keys_read += latest_keys
             return latest_keys
 

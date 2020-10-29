@@ -85,6 +85,7 @@ class AnnotatePartsReader(PlasmaReader):
         latest_keys = list(set(self._get_keys()) - set(self.keys_read))
 
         if latest_keys:
+            latest_keys.sort()
             # return just the first of the latest_keys found
             # and mark it read. one df per request this time.
             key = latest_keys[0]
@@ -94,14 +95,11 @@ class AnnotatePartsReader(PlasmaReader):
 
         return None
 
-    def get_latest_keys(self, mark_as_read=False):
-        # for the most part, mark_as_read should be left as False.
-        # there are a few rare instances where we might want to get the latest
-        # keys, and let another process perform the reading. In this case,
-        # it's prudent to mark the keys as read for tracking purposes.
+    def get_latest_keys(self):
         latest_keys = list(set(self._get_keys()) - set(self.keys_read))
 
         if latest_keys:
+            latest_keys.sort()
             self.keys_read += latest_keys
             return latest_keys
 

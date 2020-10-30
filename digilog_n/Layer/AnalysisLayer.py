@@ -19,7 +19,7 @@ class AnalysisLayer(Layer):
         pr = PlasmaReader(self.plasma_path, 'PHM08')
 
         while True:
-            mylogger.info("Analysis Layer checking for new PHM08 data...")
+            mylogger.info("Analysis Layer: Checking for new PHM08 data...")
 
             latest_keys = pr.get_latest_keys()
 

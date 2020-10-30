@@ -16,11 +16,12 @@ handler.setFormatter(formatter)
 handler.setLevel(logging.INFO)
 mylogger.addHandler(handler)
 mylogger.setLevel(logging.INFO)
-mylogger.critical("Showing CRITICAL Messages")
-mylogger.error("Showing ERROR Messages")
-mylogger.warning("Showing WARNING Messages")
-mylogger.info("Showing INFO Messages")
-mylogger.debug("Showing DEBUG Messages")
+
+mylogger.critical("System Logger: Showing CRITICAL Messages")
+mylogger.error("System Logger: Showing ERROR Messages")
+mylogger.warning("System Logger: Showing WARNING Messages")
+mylogger.info("System Logger: Showing INFO Messages")
+mylogger.debug("System Logger: Showing DEBUG Messages")
 
 
 if __name__ == '__main__':

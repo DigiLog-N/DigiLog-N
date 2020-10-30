@@ -34,11 +34,19 @@ class IdentityLayer(Layer):
 
     def get_user_group(self, flag):
         d = {}
+        d['YELLOW'] = ['charlie@canvasslabs.com']
+        d['ORANGE'] = ['charlie@canvasslabs.com']
+        d['RED'] = ['charlie@canvasslabs.com']
+        d['DANGER'] = ['charlie@canvasslabs.com']
+        d['CRITICAL'] = ['charlie@canvasslabs.com']
+
+        '''
         d['YELLOW'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com', 'peter@canvasslabs.com', 'john.wilson@erigo.com']
         d['ORANGE'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com', 'peter@canvasslabs.com', 'john.wilson@erigo.com']
         d['RED'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com', 'peter@canvasslabs.com', 'john.wilson@erigo.com']
         d['DANGER'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com', 'peter@canvasslabs.com', 'john.wilson@erigo.com']
         d['CRITICAL'] = ['charlie@canvasslabs.com', 'choonhan@canvasslabs.com', 'peter@canvasslabs.com', 'john.wilson@erigo.com']
+        '''
 
         return d[flag]
 

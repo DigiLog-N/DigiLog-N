@@ -12,7 +12,6 @@ df = pr.to_pandas()
 pr = PlasmaReader('/tmp/plasma', 'ANNO_GRPS', remove_after_reading=True)
 df = pr.to_pandas()
 
-
 pr = PlasmaReader('/tmp/plasma_full', 'RUL_RSLT', remove_after_reading=True)
 df = pr.to_pandas()
 

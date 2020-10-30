@@ -14,7 +14,7 @@ pd.set_option('max_rows', None)
 pr = PlasmaReader('/tmp/plasma', 'RUL_RSLT')
 
 current_unit = 0
-unit_count = 0
+unit_count = 1
 
 while True:
     df = pr.to_pandas()
@@ -27,7 +27,7 @@ while True:
 
             if unit_id > current_unit:
                 current_unit = unit_id
-                unit_count = 0
+                unit_count = 1
             else:
                 unit_count += 1
 
@@ -35,4 +35,5 @@ while True:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(msg.encode('utf-8'), ('127.0.0.1', 9090))
             print(msg)
+            sleep(0.1)
 

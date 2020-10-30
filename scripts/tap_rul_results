@@ -1,0 +1,19 @@
+from digilog_n.PlasmaReader import PlasmaReader
+from time import sleep
+import pandas as pd
+
+
+pd.set_option('display.max_columns', None)
+pd.set_option('max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('max_rows', None)
+
+
+pr = PlasmaReader('/tmp/plasma', 'RUL_RSLT')
+
+while True:
+    df = pr.to_pandas()
+    if df is not None:
+        print(df.info())
+        print(df.head())
+    sleep(1)

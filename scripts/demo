@@ -2,6 +2,7 @@
 from sys import stdout, argv
 from digilog_n.Layer.NotificationLayer import NotificationLayer
 from digilog_n.Layer.AnalysisLayer import AnalysisLayer
+from digilog_n.Layer.ArchiveLayer import ArchiveLayer
 from digilog_n.Layer.IdentityLayer import IdentityLayer
 from digilog_n.Layer.IMSLayer import IMSLayer
 from digilog_n.Layer.DecisionMakerLayer import DecisionMakerLayer
@@ -28,6 +29,7 @@ if __name__ == '__main__':
     processes.append(NotificationLayer())
     processes.append(DecisionMakerLayer())
     processes.append(AnalysisLayer())
+    processes.append(ArchiveLayer())
     processes.append(IMSLayer())
     processes.append(IdentityLayer())
 

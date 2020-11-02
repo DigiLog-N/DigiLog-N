@@ -12,13 +12,13 @@ mylogger = logging.getLogger("mylogger")
 class DecisionMakerLayer(Layer):
     def __init__(self):
         super().__init__()
-        self.name = 'Decision Maker'
+        self.name = 'Situational Reaction'
         self.ds_name = ''
 
     def run(self):
         self._before_you_begin()
 
-        rrr = RULResultReader(self.plasma_path, remove_after_reading=True)
+        rrr = RULResultReader(self.plasma_path) #, remove_after_reading=True)
 
         sleep_time = 3 
 
@@ -27,9 +27,14 @@ class DecisionMakerLayer(Layer):
             if results is None:
                 mylogger.debug("No new results from Spark")
             else:
+                count = 0
+                for engine_unit in results:
+                    count += 1
+
+                mylogger.debug("Situational Reaction Layer: AI Module made %d predictions that are of concern..." % count)
+
                 for engine_unit in results:
                     self.decide(engine_unit, results[engine_unit])
-                mylogger.debug("New results from Spark")
 
             mylogger.debug("sleeping %d seconds..." % sleep_time)
             # sleep an arbitrary amount before checking for more notifications 
@@ -50,19 +55,19 @@ class DecisionMakerLayer(Layer):
         flag = None
 
         if prediction < 10:
-            mylogger.info("CRITICAL: %d %d %f" % (unit_id, latest_cycle, prediction))
+            mylogger.info("Situational Reaction Layer: Engine Unit: %d\tLatest Cycle: %d\tRemaining-Useful-Life Prediction: %f\tAssertion: CRITICAL" % (unit_id, latest_cycle, prediction))
             flag = 'CRITICAL'
         elif prediction < 20:
-            mylogger.info("DANGER: %d %d %f" % (unit_id, latest_cycle, prediction))
+            mylogger.info("Situational Reaction Layer: Engine Unit: %d\tLatest Cycle: %d\tRemaining-Useful-Life Prediction: %f\tAssertion: DANGER" % (unit_id, latest_cycle, prediction))
             flag = 'DANGER'
         elif prediction < 30:
-            mylogger.info("RED: %d %d %f" % (unit_id, latest_cycle, prediction))
+            mylogger.info("Situational Reaction Layer: Engine Unit: %d\tLatest Cycle: %d\tRemaining-Useful-Life Prediction: %f\tAssertion: RED" % (unit_id, latest_cycle, prediction))
             flag = 'RED'
         elif prediction < 40:
-            mylogger.info("ORANGE: %d %d %f" % (unit_id, latest_cycle, prediction))
+            mylogger.info("Situational Reaction Layer: Engine Unit: %d\tLatest Cycle: %d\tRemaining-Useful-Life Prediction: %f\tAssertion: ORANGE" % (unit_id, latest_cycle, prediction))
             flag = 'ORANGE'
         elif prediction < 50:
-            mylogger.info("YELLOW: %d %d %f" % (unit_id, latest_cycle, prediction))
+            mylogger.info("Situational Reaction Layer: Engine Unit: %d\tLatest Cycle: %d\tRemaining-Useful-Life Prediction: %f\tAssertion: YELLOW" % (unit_id, latest_cycle, prediction))
             flag = 'YELLOW'
 
         if flag:

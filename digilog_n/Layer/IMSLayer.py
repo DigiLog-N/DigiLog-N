@@ -13,7 +13,7 @@ mylogger = logging.getLogger("mylogger")
 class IMSLayer(Layer):
     def __init__(self):
         super().__init__()
-        self.name = 'IMS'
+        self.name = 'Inventory Management System'
         self.ds_name = 'DigiLog-N Notifications'
 
     def run(self):
@@ -24,9 +24,8 @@ class IMSLayer(Layer):
         while True:
             result = pr.to_pandas()
             if result is None:
-                mylogger.debug("No requests to annotate notifications with parts lists")
+                mylogger.debug("Inventory Management System Layer: No requests to annotate notifications with parts lists")
             else:
-                mylogger.info("Request to annotate notifications w/parts lists")
                 self.annotate(result)
 
             mylogger.debug("sleeping %d seconds..." % 3)
@@ -65,13 +64,16 @@ class IMSLayer(Layer):
     def annotate(self, result):
         agw = AnnotateGroupsWriter(self.plasma_path)
 
-        mylogger.info(result.head())
+        #mylogger.info(result.head())
+        #TODO: cleanup later
+        count = 0
 
         for index, row in result.iterrows():
             unit_id = row['unit_id']
             prediction = row['prediction']
             current_cycle = row['current_cycle']
             flag = row['flag']
+            count += 1
 
             # Create an eight column-wide DataFrame. Set up the first four
             # columns, which will be repeated through all n rows:
@@ -105,3 +107,4 @@ class IMSLayer(Layer):
             # push the new DataFrame into the system
             agw.from_pandas(pd.DataFrame(results))
 
+        mylogger.info("Inventory Management System Layer: Annotating %d Alert Requests with Inventory Information..." % count)

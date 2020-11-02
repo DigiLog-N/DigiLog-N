@@ -12,7 +12,7 @@ mylogger = logging.getLogger("mylogger")
 class IdentityLayer(Layer):
     def __init__(self):
         super().__init__()
-        self.name = 'Identity'
+        self.name = 'Identity & Role Management'
         self.ds_name = 'DigiLog-N Notifications'
 
     def run(self):
@@ -23,9 +23,8 @@ class IdentityLayer(Layer):
         while True:
             result = pr.to_pandas()
             if result is None:
-                mylogger.debug("No requests to annotate notifications with user groups")
+                mylogger.debug("Identity & Role Management Layer: No requests to annotate notifications with user groups")
             else:
-                mylogger.info("Request to annotate notifications w/user groups")
                 self.annotate(result)
 
             mylogger.debug("sleeping %d seconds..." % 3)
@@ -54,10 +53,12 @@ class IdentityLayer(Layer):
     def annotate(self, result):
         nw = NotifyWriter(self.plasma_path)
 
-        mylogger.info(result.head())
+        #mylogger.info(result.head())
 
         metadata = result[['unique_id', 'unit_id', 'prediction', 'current_cycle', 'flag']].copy().drop_duplicates()
-        mylogger.info(metadata.head(100))
+        #mylogger.info(metadata.head(100))
+
+        count = 0
 
         for i in range(0, len(metadata)):
             message = []
@@ -67,6 +68,8 @@ class IdentityLayer(Layer):
             prediction = metadata.iloc[i][2]
             current_cycle = metadata.iloc[i][3]
             flag = metadata.iloc[i][4]
+
+            count += 1
 
             message.append("Engine Unit ID: %d" % unit_id)
             message.append("RUL Prediction: %f" % prediction)
@@ -98,3 +101,5 @@ class IdentityLayer(Layer):
 
             subject = 'Engine Unit %d: %s' % (unit_id, flag)
             nw.write(self.get_user_group(flag), '\n'.join(message), subject)
+
+        mylogger.info("Identity & Role Management Layer: Annotating %d Alert Requests with Role Information..." % count)

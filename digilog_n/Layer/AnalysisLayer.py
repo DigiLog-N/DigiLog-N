@@ -10,7 +10,7 @@ mylogger = logging.getLogger("mylogger")
 class AnalysisLayer(Layer):
     def __init__(self):
         super().__init__()
-        self.name = 'Analysis'
+        self.name = 'Analytical Engine'
         self.ds_name = 'PHM08 Prognostics Data Challenge Dataset'
 
     def run(self):
@@ -19,25 +19,16 @@ class AnalysisLayer(Layer):
         pr = PlasmaReader(self.plasma_path, 'PHM08')
 
         while True:
-            mylogger.info("Analysis Layer: Checking for new PHM08 data...")
+            mylogger.debug("Analytical Engine Layer: Checking for new PHM08 data...")
 
             latest_keys = pr.get_latest_keys()
 
-            with open('/tmp/keys.log', 'a') as f:
-                if latest_keys:
-                    f.write("Opening file: %d keys.\n\n" % len(latest_keys))    
-                    for key in latest_keys:
-                        f.write("%s\n" % key)
-                    f.write("Closing file.\n\n")    
-                else:
-                    f.write("Opening file: No new keys.\n\n")
-                    f.write("Closing file.\n\n")    
-
             if latest_keys:
                 # There are new data points for Spark to process
-                mylogger.info("Analysis Layer: Initiating Spark...")
+                mylogger.info("Analytical Engine Layer: New data found. Initiating 'Spark' AI Module...")
                 object_ids = ' '.join(latest_keys)
-                mylogger.debug("New keys: %s" % object_ids)
+                for object_id in object_ids:
+                    mylogger.debug("New key: %s" % object_id)
 
                 # Currently, RUL-Net does its own pulling of the data from Plasma.
                 # Since additional keys may become available after we start RUL-Net,

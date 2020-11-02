@@ -13,7 +13,7 @@ mylogger.info("TESTING")
 class NotificationLayer(Layer):
     def __init__(self):
         super().__init__()
-        self.name = 'Notifications'
+        self.name = 'Alert Module'
         self.ds_name = 'DigiLog-N Notifications'
 
     def run(self):
@@ -21,30 +21,27 @@ class NotificationLayer(Layer):
 
         pr = PlasmaReader(self.plasma_path, 'NOTIFY', remove_after_reading=True)
 
-        count = 1
-
         while True:
             pdf = pr.to_pandas()
             if pdf is None:
-                mylogger.debug("Notification Module: No new notifications")
+                mylogger.debug("Alert Module: No new alerts")
                 pass
             else:
-                mylogger.info("Notification Module: New notifications")
                 pdf = pdf.sort_values(by=['epoch_timestamp'])
-
-                pdf.to_csv('/tmp/check%d.csv' % count)
-                count += 1
 
                 user = "cowartcharles1@gmail.com"
                 password = "D9AZm244L3UbYwBf"
 
+                count = 0
                 for index, row in pdf.iterrows():
                     recipients = row['recipients'].split(',')
                     subject = row['subject']
                     message = row['message']
 
                     email_main(user, password, subject, message, recipients)
+                    count += 1
                     #log_file_main(user, password, subject, message, recipients)
+                mylogger.info("Alert Module: Processing %d Alert Notifications. Sending out %d emails..." % (count, count))
 
             # sleep an arbitrary amount before checking for more notifications 
             # John and I agree that Plasma shouldn't have a problem polling at 1s intervals.

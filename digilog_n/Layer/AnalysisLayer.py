@@ -8,8 +8,8 @@ import logging
 mylogger = logging.getLogger("mylogger")
 
 class AnalysisLayer(Layer):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, path_to_plasma_file):
+        super().__init__(path_to_plasma_file)
         self.name = 'Analytical Engine'
         self.ds_name = 'PHM08 Prognostics Data Challenge Dataset'
 

@@ -7,12 +7,12 @@ mylogger = logging.getLogger("mylogger")
 
 
 class Layer(Process):
-    def __init__(self):
+    def __init__(self, path_to_plasma_file):
         super().__init__()
         self.name = ''
         self.dsr = None
         self.ds_name = None
-        self.plasma_path = '/tmp/plasma'
+        self.plasma_path = path_to_plasma_file
 
     def _before_you_begin(self):
         mylogger.info('%s Layer: Starting...' % self.name)

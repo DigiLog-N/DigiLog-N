@@ -11,8 +11,8 @@ mylogger.info("TESTING")
 
 
 class NotificationLayer(Layer):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, path_to_plasma_file):
+        super().__init__(path_to_plasma_file)
         self.name = 'Alert Module'
         self.ds_name = 'DigiLog-N Notifications'
 

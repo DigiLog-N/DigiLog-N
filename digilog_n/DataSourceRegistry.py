@@ -8,6 +8,10 @@ class DataSourceRegistry:
         self.client = pymongo.MongoClient("mongodb://%s:%d/" % (host, port))
         self.db = self.client[database]
         self.collection = self.db[collection]
+        self.path_to_plasma = '/tmp/plasma'
+
+    def get_path_to_plasma(self):
+        return self.path_to_plasma
 
     def get_data_sources(self):
         results = []

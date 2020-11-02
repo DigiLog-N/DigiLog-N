@@ -6,6 +6,7 @@ from digilog_n.Layer.ArchiveLayer import ArchiveLayer
 from digilog_n.Layer.IdentityLayer import IdentityLayer
 from digilog_n.Layer.IMSLayer import IMSLayer
 from digilog_n.Layer.DecisionMakerLayer import DecisionMakerLayer
+from digilog_n.DataSourceRegistry import DataSourceRegistry
 import logging
 
 
@@ -25,14 +26,17 @@ mylogger.debug("System Logger: Showing DEBUG Messages")
 
 
 if __name__ == '__main__':
+    dsr = DataSourceRegistry('127.0.0.1', 27017, 'digilog_n', 'data_sources')
+    plasma_path = dsr.get_path_to_plasma()
+
     processes = []
 
-    processes.append(NotificationLayer())
-    processes.append(DecisionMakerLayer())
-    processes.append(AnalysisLayer())
-    processes.append(ArchiveLayer())
-    processes.append(IMSLayer())
-    processes.append(IdentityLayer())
+    processes.append(NotificationLayer(plasma_path))
+    processes.append(DecisionMakerLayer(plasma_path))
+    processes.append(AnalysisLayer(plasma_path))
+    processes.append(ArchiveLayer(plasma_path))
+    processes.append(IMSLayer(plasma_path))
+    processes.append(IdentityLayer(plasma_path))
 
     for p in processes:
         p.start()

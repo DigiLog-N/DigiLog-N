@@ -13,8 +13,8 @@ mylogger = logging.getLogger("mylogger")
 
 
 class ArchiveLayer(Layer):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, path_to_plasma_file):
+        super().__init__(path_to_plasma_file)
         self.name = 'DB Query & Archive'
         self.ds_name = 'PHM08 Prognostics Data Challenge Dataset'
 

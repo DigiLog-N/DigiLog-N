@@ -1,7 +1,25 @@
+##############################################################################
+# ruleset_test.py
+# Testing durable rules as a candidate for resolving constraints.
+# ultimately we implemented the rules in code. This is included for
+# for posterity.
+# https://github.com/DigiLog-N/DigiLog-N
+# Copyright 2020 Canvass Labs, Inc.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##############################################################################
 #!/usr/bin/env python
 
-# This code developed from a demo script described in durable rules docs.
-# TODO: Locate reference
 import logging
 from os import environ, path, makedirs, getcwd
 from argparse import ArgumentParser

@@ -57,7 +57,7 @@ class AnalysisLayer(Layer):
                 # clients will be making use of it, including this program, Spark,
                 # and Cassandra. 
 
-                cmd_line = 'cd /home/charlie/RUL-Net_CL; . ./setvars.sh; . venv/bin/activate; ./run_spark.sh %s' % object_ids
+                cmd_line = 'cd /your_path/RUL-Net_CL; . ./setvars.sh; . venv/bin/activate; ./run_spark.sh %s' % object_ids
                 child = Popen(cmd_line, shell=True, stderr=PIPE, stdout=PIPE)
                 out, err = child.communicate()
                 l = out.decode('ascii').split('\n')

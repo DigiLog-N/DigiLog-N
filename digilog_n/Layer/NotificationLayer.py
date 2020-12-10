@@ -46,8 +46,8 @@ class NotificationLayer(Layer):
             else:
                 pdf = pdf.sort_values(by=['epoch_timestamp'])
 
-                user = "cowartcharles1@gmail.com"
-                password = "D9AZm244L3UbYwBf"
+                user = "user@gmail.com"
+                password = "your_password_here"
 
                 count = 0
                 for index, row in pdf.iterrows():

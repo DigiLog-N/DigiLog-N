@@ -47,7 +47,7 @@ with ruleset('engine'):
         msg = "Send a notification to the maintainance crew. Special Unit %s has an estimated rul of %d." % (c.m.unit, c.m.estimated_rul))
         c.s.mycount += 1
         c.s.mybool = True
-        nw.write(['unique.identifier@gmail.com', 'charlie@canvasslabs.com'], msg, 'test message2')
+        nw.write(['user1@gmail.com', 'user2@gmail.com'], msg, 'test message2')
 
     @when_all((s.mycount > 2) & (s.mybool == True))
     def maint_warning2(c):
@@ -57,7 +57,7 @@ with ruleset('engine'):
         #  and the rule needs to be re-evaluated. Otherwise, the message should
         #  be considered sent.
         c.s.mybool = False
-        nw.write(['unique.identifier@gmail.com', 'charlie@canvasslabs.com'], msg, 'test message')
+        nw.write(['user1@gmail.com', 'user2@gmail.com'], msg, 'test message')
 
 
 
